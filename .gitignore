@@ -1,0 +1,13 @@
+.env.dev
+.env.test
+.env.prod
+# Visual Studio
+.vs/
+
+# .NET
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo

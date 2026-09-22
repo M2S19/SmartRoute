@@ -1,0 +1,10 @@
+services:
+
+  mongodb:
+    tmpfs:
+      - /data/db
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      MongoDb__DatabaseName: ${MONGO_DATABASE}

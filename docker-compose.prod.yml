@@ -1,0 +1,18 @@
+services:
+
+  mongodb:
+    volumes:
+      - mongo_prod:/data/db
+
+    restart: always
+
+  api:
+    ports:
+      - "${API_PORT}:${API_INTERNAL_PORT}"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      MongoDb__DatabaseName: ${MONGO_DATABASE}
+
+volumes:
+  mongo_prod:

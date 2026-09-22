@@ -1,0 +1,19 @@
+services:
+
+  mongodb:
+    ports:
+      - "${MONGO_PORT}:${MONGO_INTERNAL_PORT}"
+
+    volumes:
+      - mongo_dev:/data/db
+
+  api:
+    ports:
+      - "${API_PORT}:${API_INTERNAL_PORT}"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      MongoDb__DatabaseName: ${MONGO_DATABASE}
+
+volumes:
+  mongo_dev:
