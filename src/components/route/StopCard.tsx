@@ -50,7 +50,7 @@ export function StopCard({ stop, variant, footer }: StopCardProps) {
             <Text style={[styles.address, isNext && styles.addressNext, isDelivered && styles.addressDelivered]}>
               {stop.delivery.address.label}
             </Text>
-            <Text style={styles.meta}>{describeStop(stop, variant)}</Text>
+            {variant !== 'plain' ? <Text style={styles.meta}>{describeStop(stop, variant)}</Text> : null}
           </View>
         </View>
         {variant === 'delivered' ? <Badge label="Livré" tone="muted" uppercase={false} /> : null}
