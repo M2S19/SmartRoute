@@ -39,3 +39,29 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+Décisions API SmartRoute :
+- Erreurs : ProblemDetails ASP.NET Core
+- Identifiants : string (ObjectId MongoDB)
+- Dates : ISO 8601 UTC ; distances : km
+- JWT : claims sub, email, role ; header Authorization: Bearer <token>
+- 401 : token absent, invalide ou expiré (le front déconnecte, sauf sur /api/auth/login)
+- 403 : authentifié mais rôle insuffisant
+- optimize : calcul uniquement, rien n'est enregistré → 200
+- assign-best-driver : proposition uniquement, rien n'est enregistré → 200
+  (422 si adresse non géocodable ou aucun livreur/tournée disponible) ;
+  la proposition inclut routeVersion
+- confirm-assignment : reçoit address, routeId, insertionPosition, routeVersion ;
+  recalcule et vérifie côté serveur ; 201 si enregistré ;
+  409 si la tournée a changé depuis la proposition
+- Concurrence optimiste des tournées : chaque tournée a un champ version (int),
+  incrémenté à chaque modification ; toute mise à jour MongoDB est filtrée
+  sur { _id, version } → 0 document modifié = 409
+- GET /api/routes/me : 404 si aucune tournée (le front affiche l'état vide)
+- POST /api/routes/me/stops/{stopId}/deliver : idempotent,
+  200 même si l'arrêt est déjà livré ; 404 si l'arrêt n'appartient pas au livreur
+- Géocodage : fait par l'API via IGeocodingService (API Adresse / BAN),
+  résultats en cache dans MongoDB, adresse introuvable → 422
+- Distances : via IDistanceMatrixProvider ; Haversine d'abord,
+  API de routage plus tard sans modifier les algorithmes
+- Swagger/OpenAPI avec schéma Bearer JWT pour tester les routes protégées
