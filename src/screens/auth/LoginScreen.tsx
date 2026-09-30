@@ -19,6 +19,7 @@ export function LoginScreen() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const handleSubmit = () => {
+    if (isLoading) return;
     const errors: FieldErrors = {};
     if (!isValidEmail(email)) errors.email = 'Saisissez une adresse email valide.';
     if (!isNonEmpty(password)) errors.password = 'Saisissez votre mot de passe.';

@@ -86,7 +86,7 @@ export function MyRouteScreen() {
                           variant="accent"
                           size="sm"
                           onPress={() => markDelivered(stop.id)}
-                          disabled={pendingStopId !== null}
+                          disabled={pendingStopId !== null || isRefreshing}
                         />
                       ) : undefined
                     }

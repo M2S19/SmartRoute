@@ -1,4 +1,5 @@
 import { DefaultTheme, NavigationContainer, Theme } from '@react-navigation/native';
+import { FullScreenLoader } from '../components/common';
 import { colors } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { AuthNavigator } from './AuthNavigator';
@@ -13,9 +14,12 @@ const navigationTheme: Theme = {
 /**
  * Choisit la pile d'écrans selon l'utilisateur connecté.
  * Pas de navigate() après login/logout : le changement de `user` suffit.
+ * Pendant la relecture de la session, on n'affiche pas le Login (pas de flash).
  */
 export function RootNavigator() {
-  const { user } = useAuth();
+  const { user, isRestoring } = useAuth();
+
+  if (isRestoring) return <FullScreenLoader />;
 
   return (
     <NavigationContainer theme={navigationTheme}>

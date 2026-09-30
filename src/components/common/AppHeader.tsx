@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ROLE_SHORT_LABELS } from '../../constants/roles';
 import { colors, sizes, spacing, typography } from '../../constants/theme';
@@ -6,7 +7,7 @@ import { Icon, IconName } from './Icon';
 
 interface AppHeaderProps {
   role: UserRole;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
 }
 
 const ROLE_ICONS: Record<UserRole, IconName> = {
@@ -16,6 +17,19 @@ const ROLE_ICONS: Record<UserRole, IconName> = {
 
 /** Barre supérieure : « SmartRoute • {rôle} » et bouton Déconnexion. */
 export function AppHeader({ role, onLogout }: AppHeaderProps) {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await onLogout();
+      // Succès : l'écran est démonté par RootNavigator, rien à réinitialiser.
+    } catch {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.brand}>
@@ -25,10 +39,12 @@ export function AppHeader({ role, onLogout }: AppHeaderProps) {
         </Text>
       </View>
       <Pressable
-        onPress={onLogout}
+        onPress={handleLogout}
+        disabled={isLoggingOut}
         hitSlop={8}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
+        accessibilityState={{ disabled: isLoggingOut, busy: isLoggingOut }}
+        style={({ pressed }) => [styles.logout, (pressed || isLoggingOut) && styles.logoutPressed]}
       >
         {({ pressed }) => (
           <>

@@ -5,6 +5,7 @@ export * from './Badge';
 export * from './Button';
 export * from './Card';
 export * from './EmptyState';
+export * from './FullScreenLoader';
 export * from './Icon';
 export * from './LoadingIndicator';
 export * from './Notice';

@@ -46,7 +46,8 @@ export function useMyRoute() {
 
   const markDelivered = useCallback(
     async (stopId: string) => {
-      if (!route || pendingStopId) return;
+      // Pas de validation pendant une actualisation : sa réponse écraserait l'état optimiste.
+      if (!route || pendingStopId || isRefreshing) return;
 
       const previous = route;
       setActionError(null);
@@ -63,7 +64,7 @@ export function useMyRoute() {
         setPendingStopId(null);
       }
     },
-    [route, pendingStopId],
+    [route, pendingStopId, isRefreshing],
   );
 
   return {

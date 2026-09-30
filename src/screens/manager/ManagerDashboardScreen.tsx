@@ -35,6 +35,7 @@ export function ManagerDashboardScreen({ navigation }: ManagerScreenProps<'Manag
   };
 
   const handleSearch = () => {
+    if (isBusy) return;
     confirm.reset();
     void search.run({ address: { label: address.trim() } });
   };

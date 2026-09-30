@@ -47,6 +47,7 @@ export function OptimizeRouteScreen({ navigation }: ManagerScreenProps<'Optimize
   const optimization = useAsync(routeService.optimize);
 
   const handleOptimize = () => {
+    if (optimization.isLoading) return;
     const nextErrors: FormErrors = {};
     if (!isNonEmpty(depot)) nextErrors.depot = "Saisissez l'adresse du dépôt.";
     if (rows.some((r) => !isNonEmpty(r.label))) {

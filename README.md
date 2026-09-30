@@ -33,7 +33,8 @@ UI (screens, components) → services (auth, route, delivery) → mock | HTTP
 - `src/config/api.ts` : `API_BASE_URL` (`EXPO_PUBLIC_API_BASE_URL`), `USE_MOCKS` (`EXPO_PUBLIC_USE_MOCKS`), endpoints.
 - `src/services/*/xxxService.ts` : interface + choix de l'implémentation selon `USE_MOCKS`.
 - `src/services/http/httpClient.ts` : client `fetch`, ajoute le JWT (`Authorization: Bearer`).
-- `src/storage/tokenStorage.ts` : JWT dans `expo-secure-store`.
+- `src/storage/tokenStorage.ts` : session (JWT + utilisateur) dans `expo-secure-store` (mobile) ou `localStorage` (web),
+  relue au démarrage pour rester connecté sans réseau.
 - `src/storage/offline/` : organisation prévue du mode hors ligne (SQLite), non implémentée.
 - `design/` : maquettes Stitch de référence.
 
