@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>2. Dashboard — Responsable logistique</title>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              blue: '#0045A5',
+              hover: '#003682',
+              soft: '#F0F4FA',
+              inputBg: '#F3F4FB',
+            },
+            appBg: '#FAF8FF'
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-typography">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8FF] text-slate-800 min-h-screen flex justify-center items-start antialiased selection:bg-blue-100">
+<!-- Mobile Container: Matches iOS native frame proportions -->
+<div class="w-full max-w-md min-h-screen flex flex-col justify-between bg-[#FAF8FF] shadow-sm">
+<!-- BEGIN: MainHeader -->
+<header class="w-full bg-white border-b border-slate-200 px-5 pt-12 pb-3.5 flex items-center justify-between sticky top-0 z-20" data-purpose="top-navigation-bar">
+<!-- Title & Role indicator -->
+<div class="flex items-center space-x-2">
+<!-- Minimal geometric icon aligned with brand identity -->
+<div class="w-6 h-6 rounded bg-[#EEF2FF] flex items-center justify-center text-brand-blue">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24">
+<polyline points="16 3 21 3 21 8"></polyline>
+<line x1="4" x2="21" y1="20" y2="3"></line>
+<polyline points="21 16 21 21 16 21"></polyline>
+<line x1="15" x2="21" y1="15" y2="21"></line>
+<line x1="4" x2="9" y1="4" y2="9"></line>
+</svg>
+</div>
+<span class="text-sm font-semibold text-slate-900 tracking-tight">SmartRoute <span class="text-slate-400 font-normal">•</span> <span class="text-slate-600 font-normal">Responsable</span></span>
+</div>
+<!-- Logout Action -->
+<button class="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors py-1 px-2 -mr-2" data-purpose="logout-button" type="button">
+        Déconnexion
+      </button>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 px-5 py-6 space-y-6" data-purpose="dashboard-content">
+<!-- Page Title section -->
+<section data-purpose="dashboard-intro">
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Dashboard Responsable</h1>
+<p class="text-sm text-slate-600 mb-6">Gestion opérationnelle des tournées et dispatching.</p>
+</section>
+<!-- BEGIN: FunctionCard1 -->
+<!-- Function 1: Route Optimization (Priority Feature) -->
+<section class="bg-white border border-slate-200 rounded-lg p-5 shadow-xs" data-purpose="feature-card-optimization">
+<div class="flex items-center justify-between mb-2">
+<h2 class="text-base font-bold text-slate-900">Optimiser une tournée</h2>
+<span class="text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Fonction 1</span>
+</div>
+<p class="text-xs leading-relaxed text-slate-600 mb-5">
+          Calculer automatiquement l'ordre optimal des livraisons afin de réduire la distance totale parcourue.
+        </p>
+<!-- Primary Action Button -->
+<button class="w-full h-11 bg-[#0045A5] hover:bg-[#003682] text-white text-xs font-semibold uppercase tracking-wider rounded transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#0045A5] focus:ring-offset-2" data-purpose="action-optimize-tour" type="button">
+          Optimiser une tournée
+        </button>
+</section>
+<!-- END: FunctionCard1 -->
+<!-- BEGIN: FunctionCard2 -->
+<!-- Function 2: Dispatch / Assignment Feature -->
+<section class="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4" data-purpose="feature-card-assignment">
+<div class="flex items-center justify-between">
+<h2 class="text-base font-bold text-slate-900">Affecter une nouvelle livraison</h2>
+<span class="text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Fonction 2</span>
+</div>
+<p class="text-xs leading-relaxed text-slate-600">
+          Affectation automatique au livreur ayant le plus faible surcoût kilométrique.
+        </p>
+<!-- Dispatch Form Inputs -->
+<div class="space-y-1.5 pt-1" data-purpose="address-form-field">
+<label class="block text-[11px] font-bold tracking-wider uppercase text-slate-700" for="delivery-address">
+            Adresse de livraison
+          </label>
+<input class="w-full h-11 px-3 bg-[#F3F4FB] border-0 rounded text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-1 focus:ring-[#0045A5] transition-all" id="delivery-address" name="address" placeholder="ex. 14 rue de l'Industrie, Strasbourg" type="text"/>
+</div>
+<!-- Calculate Trigger Button -->
+<button class="w-full h-10 border border-[#0045A5] text-[#0045A5] bg-transparent hover:bg-blue-50 text-xs font-semibold uppercase tracking-wider rounded transition-colors" data-purpose="action-find-driver" type="button">
+          Chercher le meilleur livreur
+        </button>
+<!-- Backend Computation Result Box -->
+<div class="bg-[#F0F4FA] border border-blue-100 rounded p-3.5 space-y-1.5" data-purpose="calculation-result-panel">
+<div class="flex items-baseline justify-between text-xs">
+<span class="text-slate-600 font-medium">Livreur sélectionné :</span>
+<span class="text-slate-900 font-bold">Pierre Dubois</span>
+</div>
+<div class="flex items-baseline justify-between text-xs">
+<span class="text-slate-600 font-medium">Distance supplémentaire :</span>
+<span class="text-emerald-700 font-bold font-mono">+2,4 km</span>
+</div>
+</div>
+<!-- Confirm and Commit Dispatch Button -->
+<button class="w-full h-11 bg-[#0045A5] hover:bg-[#003682] text-white text-xs font-semibold uppercase tracking-wider rounded transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#0045A5] focus:ring-offset-2" data-purpose="action-confirm-assignment" type="button">
+          Confirmer l'affectation
+        </button>
+</section>
+<!-- END: FunctionCard2 -->
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: AcademicFooter -->
+<footer class="px-6 py-6 text-center border-t border-slate-200/80 bg-white/50" data-purpose="academic-metadata">
+<p class="text-[10px] leading-relaxed text-slate-400">
+        Application interne SmartRoute • Rôle : <span class="font-semibold text-slate-500">RESPONSABLE_LOGISTIQUE</span><br/>
+<span class="font-mono text-[9px] text-slate-400">API REST : /api/routes/optimize &amp; /api/dispatch</span>
+</p>
+</footer>
+<!-- END: AcademicFooter -->
+</div>
+</body></html>
