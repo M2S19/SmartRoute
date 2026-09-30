@@ -14,7 +14,9 @@ public sealed class JwtTokenService(IOptions<JwtSettings> options, TimeProvider 
     public AccessToken CreateToken(User user)
     {
         var settings = options.Value;
-        var issuedAt = timeProvider.GetUtcNow().UtcDateTime;
+        // Tronqué à la seconde : identique au claim « exp » et à « expiresAt » renvoyé au front.
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var issuedAt = new DateTime(now.Ticks - now.Ticks % TimeSpan.TicksPerSecond, DateTimeKind.Utc);
         var expiresAt = issuedAt.AddHours(settings.LifetimeHours);
 
         var descriptor = new SecurityTokenDescriptor

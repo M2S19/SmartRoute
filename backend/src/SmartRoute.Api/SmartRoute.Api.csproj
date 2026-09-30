@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <UserSecretsId>smartroute-api-4f6c1d2e</UserSecretsId>
+    <!-- Commentaires XML repris dans Swagger ; pas d'obligation de documenter chaque membre public. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
