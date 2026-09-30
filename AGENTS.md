@@ -65,3 +65,16 @@ Décisions API SmartRoute :
 - Distances : via IDistanceMatrixProvider ; Haversine d'abord,
   API de routage plus tard sans modifier les algorithmes
 - Swagger/OpenAPI avec schéma Bearer JWT pour tester les routes protégées
+
+Architecture backend (`backend/`, .NET 10) — garder simple, l'objectif est l'algorithmique :
+- Deux projets seulement : SmartRoute.Api et SmartRoute.Tests (xUnit v3, runner Microsoft.Testing.Platform).
+- Algorithms/ est pur : aucune dépendance à MongoDB, HTTP ou aux services.
+  Entrée = matrice de distances (double[,]) + indices, sortie = ordre d'indices.
+  Tests des algorithmes = priorité principale (SmartRoute.Tests/Algorithms).
+- Une seule interface : IGeocodingService (appel externe, simulé dans les tests). Le reste en classes concrètes.
+- Pas de CQRS, MediatR, repository générique, DependencyInjection.cs séparé ni BsonClassMap :
+  attributs Mongo sur les modèles, enregistrements et politiques de rôles dans Program.cs.
+- Une seule exception métier : ApiException(status, code, message), convertie en ProblemDetails
+  par le handler global (Errors/).
+- Clé JWT uniquement en user-secrets (vérifiée au démarrage) ; seed en Development uniquement ; port 5000.
+- Tests d'API : repository en mémoire (sous-classe aux méthodes virtuelles) et clé JWT de test.
