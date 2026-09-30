@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartRoute.Api/SmartRoute.Api.csproj" />
+    <Project Path="src/SmartRoute.Core/SmartRoute.Core.csproj" />
+    <Project Path="src/SmartRoute.Infrastructure/SmartRoute.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartRoute.Tests/SmartRoute.Tests.csproj" />
+  </Folder>
+</Solution>
