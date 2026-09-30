@@ -1,5 +1,6 @@
 export * from './AppFooter';
 export * from './AppHeader';
+export * from './BackLink';
 export * from './Badge';
 export * from './Button';
 export * from './Card';
