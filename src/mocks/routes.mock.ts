@@ -24,7 +24,7 @@ export const mockDriverRoute: Route = {
   id: 'rt-stg-am',
   name: 'Tournée Strasbourg centre',
   date: today,
-  status: 'IN_PROGRESS',
+  status: 'ASSIGNED',
   depot: depotStrasbourg,
   driver: mockDriver,
   stops: [

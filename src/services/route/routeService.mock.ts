@@ -63,13 +63,16 @@ export const routeServiceMock: RouteService = {
     if (!stop) {
       throw new ApiError('NOT_FOUND', 'Arrêt introuvable dans votre tournée.', 404);
     }
+    if (containsErrorKeyword(stop.delivery.address.label)) {
+      throw new ApiError('UNKNOWN', 'le serveur a refusé la mise à jour.', 500);
+    }
 
     const updated: RouteStop =
       stop.status === 'DELIVERED' ? stop : { ...stop, status: 'DELIVERED', deliveredAt: new Date().toISOString() };
     const stops = myRouteState.stops.map((s) => (s.id === stopId ? updated : s));
     const allDelivered = stops.every((s) => s.status === 'DELIVERED');
 
-    myRouteState = { ...myRouteState, stops, status: allDelivered ? 'COMPLETED' : 'IN_PROGRESS' };
+    myRouteState = { ...myRouteState, stops, status: allDelivered ? 'COMPLETED' : myRouteState.status };
     return deepClone(updated);
   },
 };
