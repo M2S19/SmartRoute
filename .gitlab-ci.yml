@@ -1,0 +1,61 @@
+# CI SmartRoute (monorepo) : tests du backend et vérifications du front.
+# Chaque job ne tourne que si son dossier (ou ce fichier) a changé.
+
+stages:
+  - test
+
+# Pipelines de branche et de merge request, sans doublon quand une MR est ouverte.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+backend:test:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  variables:
+    DOTNET_NOLOGO: "1"
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    NUGET_PACKAGES: $CI_PROJECT_DIR/.nuget/packages
+  cache:
+    key:
+      files:
+        - backend/SmartRoute.Api/SmartRoute.Api.csproj
+        - backend/SmartRoute.Tests/SmartRoute.Tests.csproj
+    paths:
+      - .nuget/packages
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  script:
+    - cd backend
+    # Ni MongoDB ni user-secrets : repository en mémoire et clé JWT de test.
+    # Code de sortie non nul si un test échoue → le job échoue.
+    - dotnet test --report-xunit-junit --report-xunit-junit-filename junit.xml --results-directory TestResults
+  artifacts:
+    when: always
+    reports:
+      junit: backend/TestResults/junit.xml
+    expire_in: 1 week
+
+mobile:check:
+  stage: test
+  image: node:22
+  cache:
+    key:
+      files:
+        - mobile/package-lock.json
+    paths:
+      - mobile/.npm
+  rules:
+    - changes:
+        - mobile/**/*
+        - .gitlab-ci.yml
+  script:
+    - cd mobile
+    - npm ci --cache .npm --prefer-offline
+    - npx tsc --noEmit
+    - npx expo-doctor

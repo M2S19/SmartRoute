@@ -10,3 +10,6 @@
 .idea/
 .DS_Store
 Thumbs.db
+
+# Cache NuGet de la CI
+.nuget/
