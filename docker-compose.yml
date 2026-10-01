@@ -1,10 +1,15 @@
-# MongoDB pour le développement local. L'API tourne hors Docker (dotnet run).
-# Sans authentification : exposé uniquement sur la machine (127.0.0.1).
+# Développement local.
+#   docker compose up -d                        → MongoDB seul (l'API tourne avec dotnet run)
+#   docker compose --profile api up -d --build  → MongoDB + API conteneurisée (port 5000)
+# Variables : copier .env.example en .env (non commité).
+name: smartroute
+
 services:
   mongo:
     image: mongo:8.0
     container_name: smartroute-mongo
     restart: unless-stopped
+    # Sans authentification : exposé uniquement sur la machine (127.0.0.1).
     ports:
       - "127.0.0.1:27017:27017"
     volumes:
@@ -14,6 +19,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  api:
+    profiles: ["api"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: smartroute-api:local
+    container_name: smartroute-api
+    ports:
+      - "5000:8080"
+    environment:
+      # Development par défaut : seed des comptes de démo et Swagger.
+      ASPNETCORE_ENVIRONMENT: ${API_ENVIRONMENT:-Development}
+      # Port interne fixe, quel que soit l'environnement (appsettings.Development.json vise 5000).
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Mongo__ConnectionString: mongodb://mongo:27017
+      Mongo__DatabaseName: smartroute
+      # Pas de user-secrets dans un conteneur : clé lue depuis .env. Vide → l'API refuse de démarrer.
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
 
 volumes:
   mongo-data:
