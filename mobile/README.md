@@ -5,6 +5,8 @@ l'API ASP.NET Core sera branchée plus tard sans modifier les écrans.
 
 ## Lancer
 
+Depuis le dossier `mobile/` :
+
 ```bash
 npm install
 npx expo start

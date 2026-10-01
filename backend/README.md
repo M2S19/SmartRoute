@@ -11,18 +11,19 @@ Documentation des endpoints : Swagger (voir plus bas). Décisions d'API : `../AG
 ## Lancer en local
 
 ```bash
-# 1. MongoDB (depuis le dossier backend/)
+# 1. MongoDB (depuis la racine du dépôt : docker-compose.yml y est)
 docker compose up -d
 
-# 2. Clé JWT (une seule fois, stockée hors du dépôt) : au moins 32 octets aléatoires
+# 2. Clé JWT (une seule fois, stockée hors du dépôt), depuis backend/ : au moins 32 octets aléatoires
 dotnet user-secrets set "Jwt:SigningKey" "<clé aléatoire>" --project SmartRoute.Api
 
-# 3. API
+# 3. API, depuis backend/
 dotnet run --project SmartRoute.Api
 ```
 
 - API : `http://0.0.0.0:5000` (joignable depuis le téléphone via l'IP du PC ; autoriser le port dans le pare-feu Windows).
 - Swagger : <http://127.0.0.1:5000/swagger>. Pour une route protégée : `POST /api/auth/login`, puis « Authorize » avec le token.
+- Santé : `GET /api/health` (anonyme) : 200 si MongoDB répond, sinon 503.
 - Sans clé JWT valide, l'API refuse de démarrer avec un message explicite.
 - Kestrel écoute en IPv4 : si `localhost` ne répond pas, utiliser `127.0.0.1`.
 
@@ -61,8 +62,19 @@ backend/
 ├── SmartRoute.Tests/
 │   ├── Algorithms/      tests des algorithmes (priorité, à venir)
 │   └── Api/             tests d'intégration HTTP
-└── docker-compose.yml   MongoDB
+├── Dockerfile           image de l'API (utilisée par le profil « api » du docker-compose racine)
+└── global.json          runner de tests Microsoft.Testing.Platform
 ```
+
+## Image Docker
+
+```bash
+# Depuis la racine du dépôt (JWT_SIGNING_KEY dans .env, voir .env.example)
+docker compose --profile api up -d --build
+```
+
+L'API écoute sur 8080 dans le conteneur (utilisateur non root), exposée sur le port 5000.
+Configuration par variables d'environnement : `Jwt__SigningKey`, `Mongo__ConnectionString`, `Mongo__DatabaseName`.
 
 ## Erreurs
 

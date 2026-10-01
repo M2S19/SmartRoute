@@ -1,16 +1,30 @@
+# SmartRoute — instructions pour les agents
+
+Monorepo d'un projet académique de logistique : optimisation de tournées de livraison.
+
+```
+mobile/              application Expo / React Native (TypeScript)
+backend/             API ASP.NET Core (.NET 10) + MongoDB
+docker-compose.yml   MongoDB (et l'API conteneurisée, profil « api »)
+.gitlab-ci.yml       CI : backend:test, mobile:check
+```
+
+Lancer chaque commande depuis le bon dossier : `mobile/` pour npm / Expo, `backend/` pour dotnet,
+la racine pour docker compose.
+
+## mobile/ — application Expo
+
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
-## Expo has changed — do not trust your training data
+### Expo has changed — do not trust your training data
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
 
-1. Read the major version of the `expo` package in `package.json`.
+1. Read the major version of the `expo` package in `mobile/package.json`.
 2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
 3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
 
-## Commands
-
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+### Commands (from `mobile/`)
 
 ```bash
 npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
@@ -23,24 +37,25 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
-## Navigation & Routing
+### Navigation & Routing
 
-- This project deliberately uses **React Navigation** (`@react-navigation/native-stack`), not Expo Router. Navigators live in `src/navigation/`, screens in `src/screens/`.
-- The root navigator switches stacks based on the authenticated user's role (`src/context/AuthContext.tsx`).
+- This project deliberately uses **React Navigation** (`@react-navigation/native-stack`), not Expo Router. Navigators live in `mobile/src/navigation/`, screens in `mobile/src/screens/`.
+- The root navigator switches stacks based on the authenticated user's role (`mobile/src/context/AuthContext.tsx`).
 - Must run in **Expo Go**: do not add dependencies that require a development build.
 
-## Building with EAS
+### Building with EAS
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
+Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `npx eas-cli@latest <command>`; substitute that for bare `eas` in docs examples.
 Docs: https://docs.expo.dev/eas/index.md
 
-## Rules
+### Rules
 
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
 
-Décisions API SmartRoute :
+## Décisions API SmartRoute
+
 - Erreurs : ProblemDetails ASP.NET Core
 - Identifiants : string (ObjectId MongoDB)
 - Dates : ISO 8601 UTC ; distances : km
@@ -65,9 +80,13 @@ Décisions API SmartRoute :
 - Distances : via IDistanceMatrixProvider ; Haversine d'abord,
   API de routage plus tard sans modifier les algorithmes
 - Swagger/OpenAPI avec schéma Bearer JWT pour tester les routes protégées
+- GET /api/health : anonyme, 200 si MongoDB répond, sinon 503 (code SERVICE_UNAVAILABLE)
+- Base MongoDB : `smartroute` partout ; API sur le port 5000 (8080 dans le conteneur, mappé sur 5000)
 
-Architecture backend (`backend/`, .NET 10) — garder simple, l'objectif est l'algorithmique :
-- Deux projets seulement : SmartRoute.Api et SmartRoute.Tests (xUnit v3, runner Microsoft.Testing.Platform).
+## backend/ — architecture (.NET 10)
+
+Garder simple, l'objectif est l'algorithmique et la documentation :
+- Deux projets seulement : SmartRoute.Api et SmartRoute.Tests (xUnit v3, runner Microsoft.Testing.Platform via `backend/global.json`).
 - Algorithms/ est pur : aucune dépendance à MongoDB, HTTP ou aux services.
   Entrée = matrice de distances (double[,]) + indices, sortie = ordre d'indices.
   Tests des algorithmes = priorité principale (SmartRoute.Tests/Algorithms).
@@ -76,5 +95,15 @@ Architecture backend (`backend/`, .NET 10) — garder simple, l'objectif est l'a
   attributs Mongo sur les modèles, enregistrements et politiques de rôles dans Program.cs.
 - Une seule exception métier : ApiException(status, code, message), convertie en ProblemDetails
   par le handler global (Errors/).
-- Clé JWT uniquement en user-secrets (vérifiée au démarrage) ; seed en Development uniquement ; port 5000.
-- Tests d'API : repository en mémoire (sous-classe aux méthodes virtuelles) et clé JWT de test.
+- Clé JWT uniquement en user-secrets en local (vérifiée au démarrage), variable `Jwt__SigningKey` en conteneur ;
+  seed en Development uniquement.
+- Tests d'API : repository en mémoire (sous-classe aux méthodes virtuelles) et clé JWT de test ;
+  `dotnet test` ne doit dépendre ni de MongoDB ni des user-secrets (CI).
+
+Commandes (depuis `backend/`) : `dotnet build`, `dotnet test`, `dotnet run --project SmartRoute.Api`.
+
+## CI (.gitlab-ci.yml)
+
+- `backend:test` : `dotnet test` dans `mcr.microsoft.com/dotnet/sdk:10.0`, rapport JUnit.
+- `mobile:check` : `npm ci`, `npx tsc --noEmit`, `npx expo-doctor` dans `node:22`.
+- Chaque job ne tourne que si son dossier change. Pas de job Docker (runners UHA inconnus).
