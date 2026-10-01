@@ -1,41 +1,12 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Racine du monorepo. Voir aussi mobile/.gitignore et backend/.gitignore.
 
-# dependencies
-node_modules/
+# Variables d'environnement (docker compose) : seul .env.example est commité
+.env
+.env.*
+!.env.example
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
+# Éditeurs / OS
+.vscode/
+.idea/
 .DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
+Thumbs.db
