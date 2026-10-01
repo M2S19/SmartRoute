@@ -20,4 +20,5 @@ public static class ErrorCodes
     public const string Forbidden = "FORBIDDEN";
     public const string NotFound = "NOT_FOUND";
     public const string InternalError = "INTERNAL_ERROR";
+    public const string ServiceUnavailable = "SERVICE_UNAVAILABLE";
 }
