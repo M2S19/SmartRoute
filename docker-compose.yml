@@ -23,9 +23,9 @@ services:
   api:
     profiles: ["api"]
     build:
-      context: ./backend
+      context: ./backend/SmartRoute.Api
       dockerfile: Dockerfile
-    # Attention : « --build » remplace le contenu de cette image par le code actuel de backend/.
+    # Attention : « --build » remplace le contenu de cette image par le code actuel de backend/SmartRoute.Api.
     image: smartroute-api:latest
     container_name: smartroute-api
     ports:
