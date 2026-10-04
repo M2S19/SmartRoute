@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="SmartRoute.Api/SmartRoute.Api.csproj" />
-  <Project Path="SmartRoute.Tests/SmartRoute.Tests.csproj" />
-</Solution>
