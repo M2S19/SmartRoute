@@ -6,7 +6,7 @@ name: smartroute
 
 services:
   mongo:
-    image: mongo:8.0
+    image: mongo:8
     container_name: smartroute-mongo
     restart: unless-stopped
     # Sans authentification : exposé uniquement sur la machine (127.0.0.1).
@@ -25,7 +25,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: smartroute-api:local
+    # Attention : « --build » remplace le contenu de cette image par le code actuel de backend/.
+    image: smartroute-api:latest
     container_name: smartroute-api
     ports:
       - "5000:8080"
