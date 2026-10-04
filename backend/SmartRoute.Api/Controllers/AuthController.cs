@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartRoute.Api.DTOs;
+using SmartRoute.Api.DTOs.Auth;
 using SmartRoute.Api.Services;
 
 namespace SmartRoute.Api.Controllers;
@@ -21,8 +21,6 @@ public sealed class AuthController(AuthService authService) : ControllerBase
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         // Email et Password non nuls : garantis par [Required] (sinon 400 automatique avant d'arriver ici).
-        var result = await authService.LoginAsync(request.Email!, request.Password!, cancellationToken);
-
-        return Ok(new LoginResponse(result.AccessToken.Token, result.AccessToken.ExpiresAtUtc, UserDto.From(result.User)));
+        return Ok(await authService.LoginAsync(request.Email!, request.Password!, cancellationToken));
     }
 }

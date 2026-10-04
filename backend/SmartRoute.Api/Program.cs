@@ -1,55 +1,41 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using MongoDB.Driver;
 using SmartRoute.Api.Auth;
 using SmartRoute.Api.Errors;
-using SmartRoute.Api.Models;
 using SmartRoute.Api.Repositories;
 using SmartRoute.Api.Services;
 using SmartRoute.Api.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------- Configuration (validée au démarrage) ----------
+// ---------- MongoDB (configuration validée au démarrage) ----------
 
-builder.Services.AddOptions<MongoSettings>()
-    .Bind(builder.Configuration.GetSection(MongoSettings.SectionName))
-    .Validate(s => !string.IsNullOrWhiteSpace(s.ConnectionString), "Mongo:ConnectionString est obligatoire.")
-    .Validate(s => !string.IsNullOrWhiteSpace(s.DatabaseName), "Mongo:DatabaseName est obligatoire.")
+builder.Services.AddOptions<MongoDbSettings>()
+    .Bind(builder.Configuration.GetSection(MongoDbSettings.SectionName))
+    .Validate(s => !string.IsNullOrWhiteSpace(s.ConnectionString), "MongoDb:ConnectionString est obligatoire.")
+    .Validate(s => !string.IsNullOrWhiteSpace(s.DatabaseName), "MongoDb:DatabaseName est obligatoire.")
     .ValidateOnStart();
-
-builder.Services.AddOptions<JwtSettings>()
-    .Bind(builder.Configuration.GetSection(JwtSettings.SectionName))
-    .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer) && !string.IsNullOrWhiteSpace(s.Audience),
-        "Jwt:Issuer et Jwt:Audience sont obligatoires.")
-    .Validate(s => s.LifetimeHours > 0, "Jwt:LifetimeHours doit être positif.")
-    .Validate(s => s.SigningKeyBytes.Length >= JwtSettings.MinimumKeyBytes,
-        $"Jwt:SigningKey absente ou trop courte (≥ {JwtSettings.MinimumKeyBytes} octets). " +
-        "Définissez-la avec : dotnet user-secrets set \"Jwt:SigningKey\" \"<clé>\" --project SmartRoute.Api")
-    .ValidateOnStart();
-
-builder.Services.AddOptions<SeedSettings>().Bind(builder.Configuration.GetSection(SeedSettings.SectionName));
-
-// ---------- MongoDB, repositories, services ----------
 
 // Le client ne se connecte qu'à la première requête MongoDB.
 builder.Services.AddSingleton<IMongoClient>(sp =>
-    new MongoClient(sp.GetRequiredService<IOptions<MongoSettings>>().Value.ConnectionString));
+    new MongoClient(sp.GetRequiredService<IOptions<MongoDbSettings>>().Value.ConnectionString));
 builder.Services.AddSingleton(sp =>
-    sp.GetRequiredService<IMongoClient>().GetDatabase(sp.GetRequiredService<IOptions<MongoSettings>>().Value.DatabaseName));
+    sp.GetRequiredService<IMongoClient>().GetDatabase(sp.GetRequiredService<IOptions<MongoDbSettings>>().Value.DatabaseName));
+
+// ---------- Repositories, services, authentification ----------
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<PasswordHasher<User>>();
 builder.Services.AddSingleton<UserRepository>();
-builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddScoped<AuthService>();
+
+builder.Services.AddOptions<SeedSettings>().Bind(builder.Configuration.GetSection(SeedSettings.SectionName));
 builder.Services.AddScoped<DatabaseSeeder>();
+
+// JWT (clé vérifiée au démarrage), PasswordHasher, JwtTokenService, politiques de rôles : voir Auth/AuthSetup.cs.
+builder.Services.AddSmartRouteAuth(builder.Configuration);
 
 // ---------- MVC, erreurs ----------
 
@@ -64,39 +50,6 @@ builder.Services
 
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = ProblemDetailsConfig.Customize);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
-// ---------- Authentification JWT et rôles ----------
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
-
-// Configuré via les options pour lire JwtSettings validé (et la clé de test dans les tests).
-builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-    .Configure<IOptions<JwtSettings>>((options, jwtOptions) =>
-    {
-        var jwt = jwtOptions.Value;
-        // Garde les claims courts (« sub », « role ») au lieu des URI Microsoft.
-        options.MapInboundClaims = false;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidIssuer = jwt.Issuer,
-            ValidAudience = jwt.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(jwt.SigningKeyBytes),
-            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            NameClaimType = ClaimNames.Subject,
-            RoleClaimType = ClaimNames.Role,
-        };
-    });
-
-builder.Services.AddAuthorizationBuilder()
-    // Sécurisé par défaut : tout endpoint exige un token, sauf [AllowAnonymous].
-    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
-    .AddPolicy(Policies.RequireManager, policy => policy.RequireRole(Roles.ResponsableLogistique))
-    .AddPolicy(Policies.RequireDriver, policy => policy.RequireRole(Roles.Livreur));
 
 // ---------- Swagger ----------
 
@@ -171,7 +124,7 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     catch (TimeoutException exception)
     {
         app.Logger.LogCritical(exception,
-            "MongoDB injoignable. Lancez-le avec « docker compose up -d » dans le dossier backend.");
+            "MongoDB injoignable. Lancez-le avec « docker compose up -d » à la racine du dépôt.");
         throw;
     }
 }

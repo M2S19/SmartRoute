@@ -8,7 +8,7 @@ public static class Roles
 }
 
 /// <summary>
-/// Politiques d'autorisation (déclarées dans Program.cs), pour les futurs endpoints :
+/// Politiques d'autorisation (déclarées dans AuthSetup), pour les futurs endpoints :
 /// <c>[Authorize(Policy = Policies.RequireManager)]</c>.
 /// Sans attribut, un endpoint exige seulement un utilisateur authentifié.
 /// </summary>

@@ -1,7 +1,7 @@
 # Image de l'API SmartRoute. Contexte de build : backend/
 #   docker build -t smartroute-api ./backend
 # Configuration attendue à l'exécution (variables d'environnement) :
-#   Jwt__SigningKey, Mongo__ConnectionString, Mongo__DatabaseName
+#   Jwt__SigningKey, MongoDb__ConnectionString, MongoDb__DatabaseName
 
 # ---------- Étape 1 : compilation ----------
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build

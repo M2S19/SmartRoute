@@ -74,7 +74,7 @@ docker compose --profile api up -d --build
 ```
 
 L'API écoute sur 8080 dans le conteneur (utilisateur non root), exposée sur le port 5000.
-Configuration par variables d'environnement : `Jwt__SigningKey`, `Mongo__ConnectionString`, `Mongo__DatabaseName`.
+Configuration par variables d'environnement : `Jwt__SigningKey`, `MongoDb__ConnectionString`, `MongoDb__DatabaseName`.
 
 ## Erreurs
 

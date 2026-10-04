@@ -1,8 +1,8 @@
 namespace SmartRoute.Api.Settings;
 
-public sealed class MongoSettings
+public sealed class MongoDbSettings
 {
-    public const string SectionName = "Mongo";
+    public const string SectionName = "MongoDb";
 
     public string ConnectionString { get; set; } = string.Empty;
 

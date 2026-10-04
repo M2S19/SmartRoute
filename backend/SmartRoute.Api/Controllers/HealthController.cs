@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using SmartRoute.Api.DTOs;
+using SmartRoute.Api.DTOs.Health;
 using SmartRoute.Api.Errors;
 
 namespace SmartRoute.Api.Controllers;

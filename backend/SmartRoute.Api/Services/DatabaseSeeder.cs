@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using SmartRoute.Api.Auth;
 using SmartRoute.Api.Models;
@@ -13,7 +12,7 @@ namespace SmartRoute.Api.Services;
 /// </summary>
 public sealed class DatabaseSeeder(
     UserRepository users,
-    PasswordHasher<User> passwordHasher,
+    PasswordHasher passwordHasher,
     IOptions<SeedSettings> options,
     ILogger<DatabaseSeeder> logger)
 {
@@ -36,7 +35,7 @@ public sealed class DatabaseSeeder(
         {
             if (await users.FindByEmailAsync(user.Email, cancellationToken) is not null) continue;
 
-            user.PasswordHash = passwordHasher.HashPassword(user, password);
+            user.PasswordHash = passwordHasher.Hash(user, password);
             await users.AddAsync(user, cancellationToken);
             logger.LogInformation("Compte de démonstration créé : {Email} ({Role}).", user.Email, user.Role);
         }

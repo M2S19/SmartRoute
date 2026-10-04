@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace SmartRoute.Api.DTOs;
+namespace SmartRoute.Api.DTOs.Auth;
 
 public sealed class LoginRequest
 {

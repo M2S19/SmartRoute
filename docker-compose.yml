@@ -35,8 +35,8 @@ services:
       ASPNETCORE_ENVIRONMENT: ${API_ENVIRONMENT:-Development}
       # Port interne fixe, quel que soit l'environnement (appsettings.Development.json vise 5000).
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
-      Mongo__ConnectionString: mongodb://mongo:27017
-      Mongo__DatabaseName: smartroute
+      MongoDb__ConnectionString: mongodb://mongo:27017
+      MongoDb__DatabaseName: smartroute
       # Pas de user-secrets dans un conteneur : clé lue depuis .env. Vide → l'API refuse de démarrer.
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-}
     depends_on:
