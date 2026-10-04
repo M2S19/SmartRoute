@@ -4,7 +4,7 @@ using MongoDB.Driver;
 using SmartRoute.Api.Models;
 using SmartRoute.Api.Repositories;
 
-namespace SmartRoute.Tests.Api;
+namespace SmartRoute.Tests.Common;
 
 /// <summary>
 /// Remplace UserRepository dans les tests d'API : aucune base MongoDB n'est nécessaire.

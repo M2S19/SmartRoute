@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +8,7 @@ using SmartRoute.Api.Auth;
 using SmartRoute.Api.Models;
 using SmartRoute.Api.Repositories;
 
-namespace SmartRoute.Tests.Api;
+namespace SmartRoute.Tests.Common;
 
 /// <summary>
 /// API hébergée en mémoire : repository en mémoire, clé JWT de test, pas d'initialisation MongoDB.
@@ -44,7 +43,7 @@ public sealed class SmartRouteApiFactory : WebApplicationFactory<Program>
 
     private static InMemoryUserRepository CreateUsers()
     {
-        var hasher = new PasswordHasher<User>();
+        var hasher = new PasswordHasher();
         var users = new InMemoryUserRepository();
 
         User[] accounts =
@@ -55,7 +54,7 @@ public sealed class SmartRouteApiFactory : WebApplicationFactory<Program>
 
         foreach (var account in accounts)
         {
-            account.PasswordHash = hasher.HashPassword(account, Password);
+            account.PasswordHash = hasher.Hash(account, Password);
             users.AddAsync(account).GetAwaiter().GetResult();
         }
 

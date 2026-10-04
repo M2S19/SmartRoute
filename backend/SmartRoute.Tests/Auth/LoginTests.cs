@@ -2,8 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.IdentityModel.JsonWebTokens;
+using SmartRoute.Tests.Common;
 
-namespace SmartRoute.Tests.Api;
+namespace SmartRoute.Tests.Auth;
 
 public sealed class LoginTests(SmartRouteApiFactory factory) : IClassFixture<SmartRouteApiFactory>
 {
