@@ -5,7 +5,8 @@ Monorepo d'un projet académique de logistique : optimisation de tournées de li
 ```
 frontend/              application Expo / React Native (TypeScript)
 backend/             API ASP.NET Core (.NET 10) + MongoDB
-docker-compose.yml   MongoDB (et l'API conteneurisée, profil « api »)
+docker-compose.yml   configuration Docker commune (MongoDB + API)
+docker-compose.{dev,test,prod}.yml   surcharges par environnement (+ .env.<env>, modèles .env.<env>.example)
 .gitlab-ci.yml       CI : backend:test, frontend:check
 ```
 
@@ -80,8 +81,26 @@ Docs: https://docs.expo.dev/eas/index.md
 - Distances : matrice construite par Services/DistanceService (classe concrète), Haversine d'abord,
   API de routage plus tard sans modifier les algorithmes
 - Swagger/OpenAPI avec schéma Bearer JWT pour tester les routes protégées
-- GET /api/health : anonyme, 200 si MongoDB répond, sinon 503 (code SERVICE_UNAVAILABLE)
-- Base MongoDB : `smartroute` partout ; API sur le port 5000 (8080 dans le conteneur, mappé sur 5000)
+- GET /api/health : anonyme, vérifie seulement que l'API répond → 200 (aucun appel à MongoDB)
+- GET /api/mongo-health : anonyme, ping MongoDB → 200, sinon 503 (code SERVICE_UNAVAILABLE, sans détail technique)
+- Base MongoDB par environnement ASP.NET Core : Development → `smartroute_dev`, Testing → `smartroute_test`,
+  Production → `smartroute`
+- Ports : port interne de l'API toujours 8080 dans le conteneur ; port hôte 5000 en DEV (et pour `dotnet run`),
+  8080 en PROD ; MongoDB exposé seulement en DEV, sur 127.0.0.1
+
+## Docker et environnements
+
+- `docker-compose.yml` (commun, racine) + une surcharge `docker-compose.<env>.yml` + `--env-file .env.<env>` :
+  `docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build`
+- Projets Compose séparés (`smartroute-dev`, `smartroute-test`, `smartroute-prod`), pas de `container_name` fixe.
+- DEV : volume persistant, MongoDB sur 127.0.0.1. TEST : MongoDB éphémère (tmpfs), aucun port.
+  PROD : volume persistant, MongoDB non exposé, `restart: always`.
+- Variables (une seule définition par paramètre) : `API_PORT`, `MONGO_PORT` (DEV), `MONGO_DATABASE`, `API_ENVIRONMENT`,
+  `JWT_SIGNING_KEY` dans `.env.<env>` ; images (`mongo:8`, `smartroute-api:latest`) et chaîne de connexion
+  (`mongodb://mongo:27017`) dans `docker-compose.yml`.
+- Les vrais `.env.<env>` ne sont jamais commités ; seuls les `.env.<env>.example` (sans secret) le sont.
+  `JWT_SIGNING_KEY` vide en PROD → l'API refuse de démarrer.
+- Dockerfile : `backend/SmartRoute.Api/Dockerfile` (contexte de build = `backend/SmartRoute.Api`).
 
 ## backend/ — architecture (.NET 10)
 
@@ -109,15 +128,17 @@ Controller → Service → Algorithm / Repository → MongoDB.
   par le handler global (Errors/).
 - Clé JWT uniquement en user-secrets en local (vérifiée au démarrage), variable `Jwt__SigningKey` en conteneur ;
   seed en Development uniquement.
-- Tests (SmartRoute.Tests) : Auth/, Routes/, Algorithms/ (priorité), Integration/ (vrai MongoDB si nécessaire),
-  Common/ (SmartRouteApiFactory, dépôts en mémoire, données de test).
+- Tests (SmartRoute.Tests) : Auth/, Routes/, Algorithms/ (priorité), Integration/ (vrai MongoDB, base smartroute_test),
+  Common/ (SmartRouteApiFactory, dépôts en mémoire, TestMongo, données de test).
+  Integration/ : ignoré localement si MongoDB est absent ; obligatoire en CI (SMARTROUTE_REQUIRE_MONGO=true,
+  SMARTROUTE_TEST_MONGO=mongodb://mongo:27017, service mongo:8).
   Tests d'API avec repository en mémoire (sous-classe aux méthodes virtuelles) et clé JWT de test ;
-  `dotnet test` ne doit dépendre ni de MongoDB ni des user-secrets (CI).
+  `dotnet test` ne doit pas échouer faute de MongoDB en local, ni dépendre des user-secrets.
 
 Commandes (depuis `backend/`) : `dotnet build`, `dotnet test`, `dotnet run --project SmartRoute.Api`.
 
 ## CI (.gitlab-ci.yml)
 
-- `backend:test` : `dotnet test` dans `mcr.microsoft.com/dotnet/sdk:10.0`, rapport JUnit.
+- `backend:test` : `dotnet test` dans `mcr.microsoft.com/dotnet/sdk:10.0` avec un service `mongo:8`, rapport JUnit.
 - `frontend:check` : `npm ci`, `npx tsc --noEmit`, `npx expo-doctor` dans `node:22`.
 - Chaque job ne tourne que si son dossier change. Pas de job Docker (runners UHA inconnus).

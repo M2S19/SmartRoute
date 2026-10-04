@@ -11,8 +11,8 @@ Documentation des endpoints : Swagger (voir plus bas). Décisions d'API : `../AG
 ## Lancer en local
 
 ```bash
-# 1. MongoDB (depuis la racine du dépôt : docker-compose.yml y est)
-docker compose up -d
+# 1. MongoDB DEV seul (depuis la racine du dépôt), base smartroute_dev sur 127.0.0.1:27017
+docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d mongo
 
 # 2. Clé JWT (une seule fois, stockée hors du dépôt), depuis backend/ : au moins 32 octets aléatoires
 dotnet user-secrets set "Jwt:SigningKey" "<clé aléatoire>" --project SmartRoute.Api
@@ -23,7 +23,8 @@ dotnet run --project SmartRoute.Api
 
 - API : `http://0.0.0.0:5000` (joignable depuis le téléphone via l'IP du PC ; autoriser le port dans le pare-feu Windows).
 - Swagger : <http://127.0.0.1:5000/swagger>. Pour une route protégée : `POST /api/auth/login`, puis « Authorize » avec le token.
-- Santé : `GET /api/health` (anonyme) : 200 si MongoDB répond, sinon 503.
+- Santé (anonymes) : `GET /api/health` → 200 si l'API répond ; `GET /api/mongo-health` → 200 si MongoDB répond, sinon 503.
+- Base MongoDB selon l'environnement : Development → `smartroute_dev`, Testing → `smartroute_test`, Production → `smartroute`.
 - Sans clé JWT valide, l'API refuse de démarrer avec un message explicite.
 - Kestrel écoute en IPv4 : si `localhost` ne répond pas, utiliser `127.0.0.1`.
 
@@ -40,9 +41,13 @@ Comptes créés au démarrage **en Development uniquement** (mot de passe de dé
 dotnet test
 ```
 
-Ni MongoDB ni user-secrets nécessaires : les tests d'API utilisent un repository en mémoire
+Pas de user-secrets nécessaires : les tests d'API utilisent un repository en mémoire
 et une clé JWT de test (`SmartRoute.Tests/Common/SmartRouteApiFactory.cs`).
 Runner : Microsoft.Testing.Platform (`global.json`).
+
+Les tests `Integration/` utilisent un vrai MongoDB (base `smartroute_test`, adresse `SMARTROUTE_TEST_MONGO`,
+`mongodb://localhost:27017` par défaut). Sans MongoDB, ils sont **ignorés** en local ; avec
+`SMARTROUTE_REQUIRE_MONGO=true` (CI), ils **échouent** si MongoDB est absent.
 
 ## Structure
 
@@ -61,25 +66,27 @@ backend/
 │   ├── Auth/            JwtTokenService, PasswordHasher, AuthSetup (JWT + politiques), Roles
 │   ├── Settings/        MongoDbSettings, JwtSettings, SeedSettings
 │   ├── Errors/          ApiException, ErrorCodes, handler global, ProblemDetails
-│   └── Program.cs       enregistrement des services, Swagger, pipeline HTTP
+│   ├── Program.cs       enregistrement des services, Swagger, pipeline HTTP
+│   └── Dockerfile       image de l'API (contexte de build : ce dossier)
 ├── SmartRoute.Tests/
 │   ├── Auth/            tests du login
 │   ├── Routes/          tests des endpoints de tournées (à venir)
 │   ├── Algorithms/      tests des algorithmes (priorité, à venir)
-│   ├── Integration/     tests sur un vrai MongoDB (si nécessaire)
-│   └── Common/          SmartRouteApiFactory, dépôt en mémoire
-├── Dockerfile           image de l'API (utilisée par le profil « api » du docker-compose racine)
+│   ├── Integration/     tests sur un vrai MongoDB (santé, base smartroute_test)
+│   └── Common/          SmartRouteApiFactory, dépôt en mémoire, TestMongo
 └── global.json          runner de tests Microsoft.Testing.Platform
 ```
 
 ## Image Docker
 
+Construite et lancée par les fichiers compose de la racine (voir le README racine, section « Docker par environnement ») :
+
 ```bash
-# Depuis la racine du dépôt (JWT_SIGNING_KEY dans .env, voir .env.example)
-docker compose --profile api up -d --build
+# Depuis la racine du dépôt (JWT_SIGNING_KEY dans .env.dev, voir .env.dev.example)
+docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-L'API écoute sur 8080 dans le conteneur (utilisateur non root), exposée sur le port 5000.
+L'API écoute toujours sur 8080 dans le conteneur (utilisateur non root) : port hôte 5000 en DEV, 8080 en PROD.
 Configuration par variables d'environnement : `Jwt__SigningKey`, `MongoDb__ConnectionString`, `MongoDb__DatabaseName`.
 
 ## Erreurs

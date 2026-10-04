@@ -124,7 +124,8 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     catch (TimeoutException exception)
     {
         app.Logger.LogCritical(exception,
-            "MongoDB injoignable. Lancez-le avec « docker compose up -d » à la racine du dépôt.");
+            "MongoDB injoignable. En DEV, depuis la racine du dépôt : " +
+            "« docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d mongo ».");
         throw;
     }
 }
