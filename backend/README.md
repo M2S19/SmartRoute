@@ -23,7 +23,7 @@ dotnet run --project SmartRoute.Api
 
 - API : `http://0.0.0.0:5000` (joignable depuis le téléphone via l'IP du PC ; autoriser le port dans le pare-feu Windows).
 - Swagger : <http://127.0.0.1:5000/swagger>. Pour une route protégée : `POST /api/auth/login`, puis « Authorize » avec le token.
-- Santé (anonymes) : `GET /api/health` → 200 si l'API répond ; `GET /api/mongo-health` → 200 si MongoDB répond, sinon 503.
+- Santé (anonymes) : `GET /api/health` → 200 si l'API répond ; `GET /api/mongo-health` → 200 si MongoDB répond, sinon 500.
 - Base MongoDB selon l'environnement : Development → `smartroute_dev`, Testing → `smartroute_test`, Production → `smartroute`.
 - Sans clé JWT valide, l'API refuse de démarrer avec un message explicite.
 - Kestrel écoute en IPv4 : si `localhost` ne répond pas, utiliser `127.0.0.1`.

@@ -82,7 +82,9 @@ Docs: https://docs.expo.dev/eas/index.md
   API de routage plus tard sans modifier les algorithmes
 - Swagger/OpenAPI avec schéma Bearer JWT pour tester les routes protégées
 - GET /api/health : anonyme, vérifie seulement que l'API répond → 200 (aucun appel à MongoDB)
-- GET /api/mongo-health : anonyme, ping MongoDB → 200, sinon 503 (code SERVICE_UNAVAILABLE, sans détail technique)
+- GET /api/mongo-health : anonyme, ping MongoDB (RunCommandAsync) → 200, sinon 500.
+  Contrôleur volontairement simple, repris de l'ancien backend : pas d'ApiException, de ProblemDetails, de DTO,
+  de timeout ni de logger spécifiques. Ne pas le « mettre aux normes » sans demande explicite.
 - Base MongoDB par environnement ASP.NET Core : Development → `smartroute_dev`, Testing → `smartroute_test`,
   Production → `smartroute`
 - Ports : port interne de l'API toujours 8080 dans le conteneur ; port hôte 5000 en DEV (et pour `dotnet run`),
