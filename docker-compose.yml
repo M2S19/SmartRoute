@@ -1,19 +1,18 @@
-# Développement local.
-#   docker compose up -d                        → MongoDB seul (l'API tourne avec dotnet run)
-#   docker compose --profile api up -d --build  → MongoDB + API conteneurisée (port 5000)
-# Variables : copier .env.example en .env (non commité).
+# Configuration commune à tous les environnements. Toujours la combiner avec une surcharge :
+#
+#   DEV  : docker compose --env-file .env.dev  -f docker-compose.yml -f docker-compose.dev.yml  up -d --build
+#   TEST : docker compose --env-file .env.test -f docker-compose.yml -f docker-compose.test.yml up -d --build
+#   PROD : docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# MongoDB seul (pour « dotnet run » en DEV) : ajouter « mongo » à la fin de la commande DEV.
+# Variables : voir .env.<env>.example (copier en .env.<env>, non commité).
 name: smartroute
 
 services:
   mongo:
-    image: mongo:8
-    container_name: smartroute-mongo
-    restart: unless-stopped
-    # Sans authentification : exposé uniquement sur la machine (127.0.0.1).
-    ports:
-      - "127.0.0.1:27017:27017"
-    volumes:
-      - mongo-data:/data/db
+    # Images identiques dans tous les environnements : définies ici (surchargeables par MONGO_IMAGE / API_IMAGE).
+    image: ${MONGO_IMAGE:-mongo:8}
+    # Sans authentification : jamais exposé publiquement (port local en DEV uniquement).
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -21,27 +20,20 @@ services:
       retries: 5
 
   api:
-    profiles: ["api"]
     build:
       context: ./backend/SmartRoute.Api
       dockerfile: Dockerfile
     # Attention : « --build » remplace le contenu de cette image par le code actuel de backend/SmartRoute.Api.
-    image: smartroute-api:latest
-    container_name: smartroute-api
-    ports:
-      - "5000:8080"
+    image: ${API_IMAGE:-smartroute-api:latest}
     environment:
-      # Development par défaut : seed des comptes de démo et Swagger.
-      ASPNETCORE_ENVIRONMENT: ${API_ENVIRONMENT:-Development}
-      # Port interne fixe, quel que soit l'environnement (appsettings.Development.json vise 5000).
+      ASPNETCORE_ENVIRONMENT: ${API_ENVIRONMENT}
+      # Port interne fixe dans tous les environnements (le port hôte est défini par API_PORT).
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      # « mongo » = nom du service ci-dessus, sur le réseau interne de Compose.
       MongoDb__ConnectionString: mongodb://mongo:27017
-      MongoDb__DatabaseName: smartroute
-      # Pas de user-secrets dans un conteneur : clé lue depuis .env. Vide → l'API refuse de démarrer.
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-}
+      MongoDb__DatabaseName: ${MONGO_DATABASE}
+      # Pas de user-secrets dans un conteneur. Clé vide ou trop courte → l'API refuse de démarrer.
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
     depends_on:
       mongo:
         condition: service_healthy
-
-volumes:
-  mongo-data:

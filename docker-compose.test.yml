@@ -1,0 +1,8 @@
+# Surcharge TEST : base smartroute_test, MongoDB éphémère (données perdues à l'arrêt), aucun port exposé.
+#   docker compose --env-file .env.test -f docker-compose.yml -f docker-compose.test.yml up -d --build
+name: smartroute-test
+
+services:
+  mongo:
+    tmpfs:
+      - /data/db

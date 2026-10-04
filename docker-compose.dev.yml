@@ -1,0 +1,18 @@
+# Surcharge DEV : base smartroute_dev, données persistantes, MongoDB accessible depuis la machine.
+#   docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+name: smartroute-dev
+
+services:
+  mongo:
+    # Port local uniquement : utilisé par « dotnet run » et les outils (Compass, mongosh).
+    ports:
+      - "127.0.0.1:${MONGO_PORT}:27017"
+    volumes:
+      - mongo-dev:/data/db
+
+  api:
+    ports:
+      - "${API_PORT}:8080"
+
+volumes:
+  mongo-dev:

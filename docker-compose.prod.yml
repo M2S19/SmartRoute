@@ -1,0 +1,18 @@
+# Surcharge PROD : base smartroute, données persistantes, MongoDB non exposé, redémarrage automatique.
+#   docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# JWT_SIGNING_KEY doit être renseignée dans .env.prod, sinon l'API refuse de démarrer.
+name: smartroute-prod
+
+services:
+  mongo:
+    volumes:
+      - mongo-prod:/data/db
+    restart: always
+
+  api:
+    ports:
+      - "${API_PORT}:8080"
+    restart: always
+
+volumes:
+  mongo-prod:
