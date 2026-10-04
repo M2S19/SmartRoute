@@ -1,4 +1,4 @@
-# Racine du monorepo. Voir aussi mobile/.gitignore et backend/.gitignore.
+# Racine du monorepo. Voir aussi frontend/.gitignore et backend/.gitignore.
 
 # Variables d'environnement (docker compose) : seul .env.example est commité
 .env

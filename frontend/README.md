@@ -5,7 +5,7 @@ l'API ASP.NET Core sera branchée plus tard sans modifier les écrans.
 
 ## Lancer
 
-Depuis le dossier `mobile/` :
+Depuis le dossier `frontend/` :
 
 ```bash
 npm install

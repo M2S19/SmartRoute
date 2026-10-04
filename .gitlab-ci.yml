@@ -41,21 +41,21 @@ backend:test:
       junit: backend/TestResults/junit.xml
     expire_in: 1 week
 
-mobile:check:
+frontend:check:
   stage: test
   image: node:22
   cache:
     key:
       files:
-        - mobile/package-lock.json
+        - frontend/package-lock.json
     paths:
-      - mobile/.npm
+      - frontend/.npm
   rules:
     - changes:
-        - mobile/**/*
+        - frontend/**/*
         - .gitlab-ci.yml
   script:
-    - cd mobile
+    - cd frontend
     - npm ci --cache .npm --prefer-offline
     - npx tsc --noEmit
     - npx expo-doctor

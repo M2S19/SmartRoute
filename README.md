@@ -5,7 +5,7 @@ tournées de livraison et affecte les nouvelles livraisons ; un livreur consulte
 
 | Dossier | Contenu | Documentation |
 |---|---|---|
-| [`mobile/`](mobile/) | Application Expo / React Native (TypeScript) | [mobile/README.md](mobile/README.md) |
+| [`frontend/`](frontend/) | Application Expo / React Native (TypeScript) | [frontend/README.md](frontend/README.md) |
 | [`backend/`](backend/) | API ASP.NET Core (.NET 10) + MongoDB, algorithmes d'optimisation | [backend/README.md](backend/README.md) |
 
 Autres fichiers à la racine : `docker-compose.yml` (MongoDB, API conteneurisée en option),
@@ -23,8 +23,8 @@ docker compose up -d
 cd backend
 dotnet run --project SmartRoute.Api
 
-# 3. Application mobile (depuis mobile/)
-cd mobile
+# 3. Application mobile (depuis frontend/)
+cd frontend
 npm install
 npx expo start
 ```
@@ -42,7 +42,7 @@ docker compose --profile api up -d --build
 
 ```bash
 cd backend && dotnet build && dotnet test
-cd mobile && npx tsc --noEmit && npx expo-doctor
+cd frontend && npx tsc --noEmit && npx expo-doctor
 ```
 
-La CI GitLab exécute les mêmes vérifications (`backend:test`, `mobile:check`).
+La CI GitLab exécute les mêmes vérifications (`backend:test`, `frontend:check`).

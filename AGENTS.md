@@ -3,16 +3,16 @@
 Monorepo d'un projet académique de logistique : optimisation de tournées de livraison.
 
 ```
-mobile/              application Expo / React Native (TypeScript)
+frontend/              application Expo / React Native (TypeScript)
 backend/             API ASP.NET Core (.NET 10) + MongoDB
 docker-compose.yml   MongoDB (et l'API conteneurisée, profil « api »)
-.gitlab-ci.yml       CI : backend:test, mobile:check
+.gitlab-ci.yml       CI : backend:test, frontend:check
 ```
 
-Lancer chaque commande depuis le bon dossier : `mobile/` pour npm / Expo, `backend/` pour dotnet,
+Lancer chaque commande depuis le bon dossier : `frontend/` pour npm / Expo, `backend/` pour dotnet,
 la racine pour docker compose.
 
-## mobile/ — application Expo
+## frontend/ — application Expo
 
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
@@ -20,11 +20,11 @@ This is an Expo/React Native mobile application. Prioritize mobile-first pattern
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
 
-1. Read the major version of the `expo` package in `mobile/package.json`.
+1. Read the major version of the `expo` package in `frontend/package.json`.
 2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
 3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
 
-### Commands (from `mobile/`)
+### Commands (from `frontend/`)
 
 ```bash
 npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
@@ -39,8 +39,8 @@ Run lint and typecheck before declaring any task done.
 
 ### Navigation & Routing
 
-- This project deliberately uses **React Navigation** (`@react-navigation/native-stack`), not Expo Router. Navigators live in `mobile/src/navigation/`, screens in `mobile/src/screens/`.
-- The root navigator switches stacks based on the authenticated user's role (`mobile/src/context/AuthContext.tsx`).
+- This project deliberately uses **React Navigation** (`@react-navigation/native-stack`), not Expo Router. Navigators live in `frontend/src/navigation/`, screens in `frontend/src/screens/`.
+- The root navigator switches stacks based on the authenticated user's role (`frontend/src/context/AuthContext.tsx`).
 - Must run in **Expo Go**: do not add dependencies that require a development build.
 
 ### Building with EAS
@@ -105,5 +105,5 @@ Commandes (depuis `backend/`) : `dotnet build`, `dotnet test`, `dotnet run --pro
 ## CI (.gitlab-ci.yml)
 
 - `backend:test` : `dotnet test` dans `mcr.microsoft.com/dotnet/sdk:10.0`, rapport JUnit.
-- `mobile:check` : `npm ci`, `npx tsc --noEmit`, `npx expo-doctor` dans `node:22`.
+- `frontend:check` : `npm ci`, `npx tsc --noEmit`, `npx expo-doctor` dans `node:22`.
 - Chaque job ne tourne que si son dossier change. Pas de job Docker (runners UHA inconnus).
