@@ -41,27 +41,33 @@ dotnet test
 ```
 
 Ni MongoDB ni user-secrets nécessaires : les tests d'API utilisent un repository en mémoire
-et une clé JWT de test (`SmartRoute.Tests/Api/SmartRouteApiFactory.cs`).
+et une clé JWT de test (`SmartRoute.Tests/Common/SmartRouteApiFactory.cs`).
 Runner : Microsoft.Testing.Platform (`global.json`).
 
 ## Structure
 
+Ouvrir `SmartRoute.sln` dans Visual Studio. Dépendances : Controller → Service → Algorithm / Repository → MongoDB.
+
 ```
 backend/
+├── SmartRoute.sln
 ├── SmartRoute.Api/
-│   ├── Controllers/     endpoints HTTP (minces : délèguent aux services)
-│   ├── Services/        logique applicative (AuthService…)
-│   ├── Algorithms/      algorithmes purs (à venir)
+│   ├── Controllers/     HTTP uniquement : DTO en entrée, appel d'un Service, code HTTP en sortie
+│   ├── Services/        logique métier (AuthService, DatabaseSeeder…)
+│   ├── Algorithms/      algorithmes purs, sans dépendance (voir Algorithms/README.md)
 │   ├── Models/          documents MongoDB (attributs Bson)
-│   ├── DTOs/            contrats JSON d'entrée / sortie
-│   ├── Repositories/    accès MongoDB
-│   ├── Auth/            JwtTokenService, rôles, politiques, noms de claims
-│   ├── Errors/          ApiException, handler global, ProblemDetails
-│   ├── Settings/        classes de configuration
-│   └── Program.cs       enregistrement des services, JWT, politiques, Swagger
+│   ├── DTOs/            entrées / sorties de l'API, par fonctionnalité (Auth/, Health/…)
+│   ├── Repositories/    seul accès à MongoDB
+│   ├── Auth/            JwtTokenService, PasswordHasher, AuthSetup (JWT + politiques), Roles
+│   ├── Settings/        MongoDbSettings, JwtSettings, SeedSettings
+│   ├── Errors/          ApiException, ErrorCodes, handler global, ProblemDetails
+│   └── Program.cs       enregistrement des services, Swagger, pipeline HTTP
 ├── SmartRoute.Tests/
+│   ├── Auth/            tests du login
+│   ├── Routes/          tests des endpoints de tournées (à venir)
 │   ├── Algorithms/      tests des algorithmes (priorité, à venir)
-│   └── Api/             tests d'intégration HTTP
+│   ├── Integration/     tests sur un vrai MongoDB (si nécessaire)
+│   └── Common/          SmartRouteApiFactory, dépôt en mémoire
 ├── Dockerfile           image de l'API (utilisée par le profil « api » du docker-compose racine)
 └── global.json          runner de tests Microsoft.Testing.Platform
 ```

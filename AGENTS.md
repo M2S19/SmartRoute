@@ -73,11 +73,11 @@ Docs: https://docs.expo.dev/eas/index.md
   incrémenté à chaque modification ; toute mise à jour MongoDB est filtrée
   sur { _id, version } → 0 document modifié = 409
 - GET /api/routes/me : 404 si aucune tournée (le front affiche l'état vide)
-- POST /api/routes/me/stops/{stopId}/deliver : idempotent,
+- PATCH /api/routes/me/stops/{stopId}/deliver : idempotent (modification partielle de l'état d'un arrêt),
   200 même si l'arrêt est déjà livré ; 404 si l'arrêt n'appartient pas au livreur
 - Géocodage : fait par l'API via IGeocodingService (API Adresse / BAN),
   résultats en cache dans MongoDB, adresse introuvable → 422
-- Distances : via IDistanceMatrixProvider ; Haversine d'abord,
+- Distances : matrice construite par Services/DistanceService (classe concrète), Haversine d'abord,
   API de routage plus tard sans modifier les algorithmes
 - Swagger/OpenAPI avec schéma Bearer JWT pour tester les routes protégées
 - GET /api/health : anonyme, 200 si MongoDB répond, sinon 503 (code SERVICE_UNAVAILABLE)
@@ -85,19 +85,33 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ## backend/ — architecture (.NET 10)
 
-Garder simple, l'objectif est l'algorithmique et la documentation :
-- Deux projets seulement : SmartRoute.Api et SmartRoute.Tests (xUnit v3, runner Microsoft.Testing.Platform via `backend/global.json`).
-- Algorithms/ est pur : aucune dépendance à MongoDB, HTTP ou aux services.
-  Entrée = matrice de distances (double[,]) + indices, sortie = ordre d'indices.
-  Tests des algorithmes = priorité principale (SmartRoute.Tests/Algorithms).
+Architecture académique simple, l'objectif est l'algorithmique et la documentation :
+Controller → Service → Algorithm / Repository → MongoDB.
+
+- Deux projets seulement, ouverts dans Visual Studio via `backend/SmartRoute.sln` :
+  SmartRoute.Api et SmartRoute.Tests (xUnit v3, runner Microsoft.Testing.Platform via `backend/global.json`).
+- Dossiers de SmartRoute.Api :
+  - Controllers/ : HTTP uniquement (DTO en entrée, appel d'un Service, code HTTP en sortie). Jamais d'accès aux Repositories.
+  - Services/ : logique métier ; reçoivent et renvoient des DTOs, manipulent les Models. Jamais d'IMongoCollection.
+  - Algorithms/ : code pur, aucune dépendance à ASP.NET Core, MongoDB, Controllers, Services ou HTTP.
+    Écrits à la main par l'auteur du projet : ne pas les implémenter ni figer leurs signatures sans demande explicite.
+  - Models/ : documents MongoDB (attributs Bson ; sous-documents comme classes C# imbriquées).
+  - DTOs/ : entrées / sorties de l'API, rangées par fonctionnalité (Auth/, Routes/, Deliveries/, Health/).
+    Les Models ne sont jamais renvoyés directement ; conversion par méthodes statiques From(...).
+  - Repositories/ : seul accès à MongoDB (Find, Insert, Update, filtres).
+  - Auth/ : JwtTokenService, PasswordHasher, AuthSetup (JWT Bearer + politiques de rôles), Roles.
+  - Settings/ : MongoDbSettings, JwtSettings, SeedSettings.
+  - Errors/ : ApiException, ErrorCodes, GlobalExceptionHandler, ProblemDetailsConfig.
+- DistanceService (Haversine) est écrit à la main par l'auteur du projet, comme les algorithmes.
 - Une seule interface : IGeocodingService (appel externe, simulé dans les tests). Le reste en classes concrètes.
-- Pas de CQRS, MediatR, repository générique, DependencyInjection.cs séparé ni BsonClassMap :
-  attributs Mongo sur les modèles, enregistrements et politiques de rôles dans Program.cs.
+- Pas de CQRS, MediatR, repository générique, DependencyInjection.cs séparé ni BsonClassMap.
 - Une seule exception métier : ApiException(status, code, message), convertie en ProblemDetails
   par le handler global (Errors/).
 - Clé JWT uniquement en user-secrets en local (vérifiée au démarrage), variable `Jwt__SigningKey` en conteneur ;
   seed en Development uniquement.
-- Tests d'API : repository en mémoire (sous-classe aux méthodes virtuelles) et clé JWT de test ;
+- Tests (SmartRoute.Tests) : Auth/, Routes/, Algorithms/ (priorité), Integration/ (vrai MongoDB si nécessaire),
+  Common/ (SmartRouteApiFactory, dépôts en mémoire, données de test).
+  Tests d'API avec repository en mémoire (sous-classe aux méthodes virtuelles) et clé JWT de test ;
   `dotnet test` ne doit dépendre ni de MongoDB ni des user-secrets (CI).
 
 Commandes (depuis `backend/`) : `dotnet build`, `dotnet test`, `dotnet run --project SmartRoute.Api`.
