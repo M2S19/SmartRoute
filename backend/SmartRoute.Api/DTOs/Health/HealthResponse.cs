@@ -1,5 +1,4 @@
 namespace SmartRoute.Api.DTOs.Health;
 
-/// <param name="Status">« ok » si l'API et ses dépendances répondent.</param>
-/// <param name="Mongo">« ok » si MongoDB répond au ping.</param>
-public sealed record HealthResponse(string Status, string Mongo);
+/// <param name="Status">« ok » si l'API répond.</param>
+public sealed record HealthResponse(string Status);
