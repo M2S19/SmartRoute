@@ -15,10 +15,18 @@ workflow:
 backend:test:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:10.0
+  # MongoDB réel pour les tests d'intégration (Integration/), joignable sous le nom d'hôte « mongo ».
+  services:
+    - name: mongo:8
+      alias: mongo
   variables:
     DOTNET_NOLOGO: "1"
     DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     NUGET_PACKAGES: $CI_PROJECT_DIR/.nuget/packages
+    # Les tests d'intégration utilisent la base smartroute_test sur ce MongoDB ;
+    # MongoDB obligatoire en CI : un test d'intégration échoue (au lieu d'être ignoré) s'il est injoignable.
+    SMARTROUTE_TEST_MONGO: mongodb://mongo:27017
+    SMARTROUTE_REQUIRE_MONGO: "true"
   cache:
     key:
       files:
@@ -32,7 +40,7 @@ backend:test:
         - .gitlab-ci.yml
   script:
     - cd backend
-    # Ni MongoDB ni user-secrets : repository en mémoire et clé JWT de test.
+    # Pas de user-secrets : clé JWT de test ; tests d'API sur repository en mémoire, Integration/ sur MongoDB.
     # Code de sortie non nul si un test échoue → le job échoue.
     - dotnet test --report-xunit-junit --report-xunit-junit-filename junit.xml --results-directory TestResults
   artifacts:
