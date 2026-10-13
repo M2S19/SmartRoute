@@ -34,4 +34,13 @@ public class UserRepository(IMongoDatabase database)
 
         return _users.Indexes.CreateOneAsync(uniqueEmail, cancellationToken: cancellationToken);
     }
+
+    public virtual async Task<User?> FindByIdAsync(
+    string id,
+    CancellationToken cancellationToken = default)
+    {
+        return await _users
+            .Find(user => user.Id == id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

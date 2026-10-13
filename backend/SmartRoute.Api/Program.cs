@@ -8,6 +8,7 @@ using SmartRoute.Api.Errors;
 using SmartRoute.Api.Repositories;
 using SmartRoute.Api.Services;
 using SmartRoute.Api.Settings;
+using SmartRoute.Api.Algorithms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +84,14 @@ if (builder.Environment.IsDevelopment())
         options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 }
 
+builder.Services.AddHttpClient<GeocodingService>();
+builder.Services.AddScoped<DistanceService>();
+builder.Services.AddScoped<CheapestInsertion>();
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<RouteRepository>();
+builder.Services.AddScoped<NearestNeighbor>();
+builder.Services.AddScoped<RouteOptimizationService>();
+builder.Services.AddScoped<DeliveryAssignmentService>();
 // ---------- Pipeline HTTP ----------
 
 var app = builder.Build();
