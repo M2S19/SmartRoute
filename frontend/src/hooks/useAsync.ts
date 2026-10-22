@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { toErrorMessage } from '../types';
+import { toErrorCode, toErrorMessage } from '../types';
+import type { ApiErrorCode } from '../types';
 
 export type AsyncState<T> =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success'; data: T }
-  | { status: 'error'; error: string };
+  | { status: 'error'; error: string; code: ApiErrorCode };
 
 /**
  * États d'un appel de service : idle → loading → success | error.
@@ -22,7 +23,7 @@ export function useAsync<TArgs extends unknown[], TResult>(action: (...args: TAr
         setState({ status: 'success', data });
         return data;
       } catch (error) {
-        setState({ status: 'error', error: toErrorMessage(error) });
+        setState({ status: 'error', error: toErrorMessage(error), code: toErrorCode(error) });
         return undefined;
       }
     },

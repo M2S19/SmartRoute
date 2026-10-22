@@ -9,7 +9,7 @@ import { ApiError } from '../../types';
 import type { AssignmentProposal, Route } from '../../types';
 import type { DeliveryService } from './deliveryService';
 
-let nextParcelRef = 8805;
+let nextStopNumber = 1;
 
 /**
  * Choix FICTIF de la tournée : simple correspondance sur le nom de ville.
@@ -38,12 +38,13 @@ export const deliveryServiceMock: DeliveryService = {
       throw new ApiError('ASSIGNMENT_FAILED', 'La tournée sélectionnée n’a pas de livreur.', 422);
     }
 
-    const parcelRef = String(nextParcelRef++);
+    const { id, fullName, driverCode } = route.driver;
     return {
-      delivery: { id: `dlv-${parcelRef}`, parcelRef, parcelType: 'STANDARD', address },
+      address,
       routeId: route.id,
       routeName: route.name,
-      driver: route.driver,
+      routeVersion: 1,
+      driver: { id, fullName, driverCode },
       insertionPosition: Math.min(route.stops.length + 1, 3),
       extraDistanceKm,
     };
@@ -52,9 +53,13 @@ export const deliveryServiceMock: DeliveryService = {
   async confirmAssignment(proposal: AssignmentProposal) {
     await simulateDelay();
     return {
-      deliveryId: proposal.delivery.id,
       routeId: proposal.routeId,
-      driverName: proposal.driver.fullName,
+      routeName: proposal.routeName,
+      routeVersion: proposal.routeVersion + 1,
+      stopId: `stop-mock-${nextStopNumber++}`,
+      insertionPosition: proposal.insertionPosition,
+      extraDistanceKm: proposal.extraDistanceKm,
+      driver: proposal.driver,
     };
   },
 };

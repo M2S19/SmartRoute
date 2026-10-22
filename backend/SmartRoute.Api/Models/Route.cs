@@ -6,6 +6,9 @@ namespace SmartRoute.Api.Models;
 [BsonIgnoreExtraElements]
 public class Route
 {
+    /// <summary>Statuts d'une tournée qui peut encore recevoir une nouvelle livraison.</summary>
+    public static readonly string[] StatusesAcceptingDeliveries = ["ASSIGNED", "IN_PROGRESS"];
+
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = string.Empty;

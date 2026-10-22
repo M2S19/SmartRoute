@@ -20,3 +20,16 @@ export function formatTime(iso: string): string {
   const mm = String(date.getMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
 }
+
+/** Jour local au format yyyy-MM-dd (même format que le champ « date » d'une tournée). */
+export function todayIsoDate(now: Date = new Date()): string {
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
+/** « 2026-10-18 » → « 18/10/2026 », sans conversion de fuseau horaire. */
+export function formatDay(isoDate: string): string {
+  const [yyyy, mm, dd] = isoDate.slice(0, 10).split('-');
+  return yyyy && mm && dd ? `${dd}/${mm}/${yyyy}` : isoDate;
+}

@@ -17,5 +17,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   /** JWT renvoyé par POST /api/auth/login. */
   token: string;
+  /** Expiration du token (ISO 8601 UTC), renvoyée par l'API ; absente en mode mock. */
+  expiresAt?: string;
   user: User;
 }

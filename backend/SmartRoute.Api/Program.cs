@@ -92,6 +92,7 @@ builder.Services.AddScoped<RouteRepository>();
 builder.Services.AddScoped<NearestNeighbor>();
 builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<DeliveryAssignmentService>();
+builder.Services.AddScoped<RouteService>();
 // ---------- Pipeline HTTP ----------
 
 var app = builder.Build();

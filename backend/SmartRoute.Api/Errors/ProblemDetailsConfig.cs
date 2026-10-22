@@ -24,6 +24,8 @@ public static class ProblemDetailsConfig
             StatusCodes.Status401Unauthorized => (ErrorCodes.Unauthorized, "Non authentifié", "Authentification requise ou session expirée."),
             StatusCodes.Status403Forbidden => (ErrorCodes.Forbidden, "Accès refusé", "Accès refusé."),
             StatusCodes.Status404NotFound => (ErrorCodes.NotFound, "Introuvable", "Ressource introuvable."),
+            StatusCodes.Status409Conflict => (ErrorCodes.Conflict, "Conflit", "L'opération est en conflit avec l'état actuel des données."),
+            StatusCodes.Status422UnprocessableEntity => (ErrorCodes.UnprocessableEntity, "Requête non traitable", "La requête ne peut pas être traitée."),
             StatusCodes.Status503ServiceUnavailable => (ErrorCodes.ServiceUnavailable, "Service indisponible", "Service temporairement indisponible."),
             >= StatusCodes.Status500InternalServerError => (ErrorCodes.InternalError, "Erreur interne", "Une erreur interne est survenue."),
             _ => ((string?)null, (string?)null, (string?)null),

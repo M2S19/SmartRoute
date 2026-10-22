@@ -6,6 +6,12 @@ interface OptimizationSummaryProps {
   result: OptimizeRouteResult;
 }
 
+/** « −1,2 km (21 %) » quand la tournée raccourcit ; « +0,3 km (−5 %) » si elle s'allonge. */
+function formatGain(gainKm: number, gainPercent: number): string {
+  const sign = gainKm >= 0 ? '−' : '+';
+  return `${sign}${formatDistance(Math.abs(gainKm))} (${formatPercent(gainPercent)})`;
+}
+
 export function OptimizationSummary({ result }: OptimizationSummaryProps) {
   return (
     <ResultPanel
@@ -14,8 +20,8 @@ export function OptimizationSummary({ result }: OptimizationSummaryProps) {
         { label: 'Distance après optimisation :', value: formatDistance(result.distanceAfterKm) },
         {
           label: "Gain d'optimisation :",
-          value: `−${formatDistance(result.gainKm)} (${formatPercent(result.gainPercent)})`,
-          tone: 'success',
+          value: formatGain(result.gainKm, result.gainPercent),
+          tone: result.gainKm >= 0 ? 'success' : 'default',
         },
       ]}
     />

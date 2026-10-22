@@ -5,9 +5,9 @@ import { deepClone } from '../../utils/clone';
 import { roundTo } from '../../utils/format';
 import type { RouteService } from './routeService';
 
-// Tournée du livreur conservée en mémoire pour la durée de vie de l'app :
+// Tournées du livreur conservées en mémoire pour la durée de vie de l'app :
 // un arrêt marqué livré le reste après « Actualiser ».
-let myRouteState: Route = deepClone(mockDriverRoute);
+let myRoutesState: Route[] = [deepClone(mockDriverRoute)];
 
 /**
  * Résultat FICTIF. Aucun algorithme d'optimisation ici : l'ordre et les distances
@@ -51,28 +51,40 @@ export const routeServiceMock: RouteService = {
     return buildFakeResult(name?.trim() || 'Nouvelle tournée', depot, deliveries);
   },
 
-  async getMyRoute() {
+  async getMyRoutes() {
     await simulateDelay();
-    return deepClone(myRouteState);
+    return deepClone(myRoutesState);
   },
 
-  async markStopDelivered(stopId) {
+  // Mêmes règles que l'API (RouteService.DeliverStopAsync).
+  async markStopDelivered(routeId, stopId) {
     await simulateDelay();
 
-    const stop = myRouteState.stops.find((s) => s.id === stopId);
-    if (!stop) {
-      throw new ApiError('NOT_FOUND', 'Arrêt introuvable dans votre tournée.', 404);
+    const route = myRoutesState.find((r) => r.id === routeId);
+    const stop = route?.stops.find((s) => s.id === stopId);
+    if (!route || !stop) {
+      throw new ApiError('NOT_FOUND', 'Arrêt introuvable dans cette tournée.', 404);
+    }
+    if (route.status !== 'ASSIGNED' && route.status !== 'IN_PROGRESS') {
+      throw new ApiError('ROUTE_NOT_MODIFIABLE', "Cette tournée n'est plus modifiable.", 409);
+    }
+    if (stop.status === 'DELIVERED') {
+      throw new ApiError('STOP_ALREADY_DELIVERED', 'Cet arrêt est déjà livré.', 409);
+    }
+    const nextStop = [...route.stops].sort((a, b) => a.order - b.order).find((s) => s.status !== 'DELIVERED');
+    if (nextStop?.id !== stopId) {
+      throw new ApiError('STOP_NOT_NEXT', "Les arrêts doivent être livrés dans l'ordre de la tournée.", 409);
     }
     if (containsErrorKeyword(stop.delivery.address.label)) {
-      throw new ApiError('UNKNOWN', 'le serveur a refusé la mise à jour.', 500);
+      throw new ApiError('SERVER_ERROR', 'Le serveur a rencontré une erreur. Réessayez plus tard.', 500);
     }
 
-    const updated: RouteStop =
-      stop.status === 'DELIVERED' ? stop : { ...stop, status: 'DELIVERED', deliveredAt: new Date().toISOString() };
-    const stops = myRouteState.stops.map((s) => (s.id === stopId ? updated : s));
+    const updated: RouteStop = { ...stop, status: 'DELIVERED', deliveredAt: new Date().toISOString() };
+    const stops = route.stops.map((s) => (s.id === stopId ? updated : s));
     const allDelivered = stops.every((s) => s.status === 'DELIVERED');
+    const updatedRoute: Route = { ...route, stops, status: allDelivered ? 'COMPLETED' : 'IN_PROGRESS' };
 
-    myRouteState = { ...myRouteState, stops, status: allDelivered ? 'COMPLETED' : myRouteState.status };
-    return deepClone(updated);
+    myRoutesState = myRoutesState.map((r) => (r.id === routeId ? updatedRoute : r));
+    return deepClone(updatedRoute);
   },
 };

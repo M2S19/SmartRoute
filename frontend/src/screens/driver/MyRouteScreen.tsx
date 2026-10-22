@@ -14,6 +14,7 @@ import { spacing } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { useMyRoute } from '../../hooks/useMyRoute';
 import type { RouteStop } from '../../types';
+import { formatDay } from '../../utils/format';
 
 function variantFor(stop: RouteStop, nextStopId: string | undefined): StopCardVariant {
   if (stop.status === 'DELIVERED') return 'delivered';
@@ -22,13 +23,26 @@ function variantFor(stop: RouteStop, nextStopId: string | undefined): StopCardVa
 
 export function MyRouteScreen() {
   const { user, logout } = useAuth();
-  const { route, status, loadError, actionError, isRefreshing, pendingStopId, reload, refresh, markDelivered } =
-    useMyRoute();
+  const {
+    routes,
+    route,
+    status,
+    loadError,
+    actionError,
+    isRefreshing,
+    pendingStopId,
+    selectRoute,
+    reload,
+    refresh,
+    markDelivered,
+  } = useMyRoute();
 
   const stops = route ? [...route.stops].sort((a, b) => a.order - b.order) : [];
-  const nextStop = stops.find((s) => s.status === 'PENDING');
+  // Seule une tournée encore active peut être modifiée (l'API refuse sinon).
+  const isActive = route?.status === 'ASSIGNED' || route?.status === 'IN_PROGRESS';
+  const nextStop = isActive ? stops.find((s) => s.status === 'PENDING') : undefined;
   const deliveredCount = stops.filter((s) => s.status === 'DELIVERED').length;
-  const isCompleted = stops.length > 0 && !nextStop;
+  const isCompleted = route?.status === 'COMPLETED' || (stops.length > 0 && deliveredCount === stops.length);
 
   return (
     <ScreenContainer header={<AppHeader role="LIVREUR" onLogout={logout} />}>
@@ -40,11 +54,28 @@ export function MyRouteScreen() {
         <Notice tone="error" message={loadError ?? 'Impossible de charger la tournée.'} actionLabel="Réessayer" onAction={reload} />
       ) : null}
 
-      {status === 'ready' && route && user ? (
+      {status === 'ready' && user ? (
         <>
-          <View style={styles.block}>
-            <RouteSummaryCard route={route} driver={user} />
-          </View>
+          {routes.length > 1 ? (
+            <View style={styles.selector}>
+              {routes.map((r) => (
+                <Button
+                  key={r.id}
+                  label={`${formatDay(r.date)} · ${r.name}`}
+                  variant={r.id === route?.id ? 'accent' : 'secondary'}
+                  size="sm"
+                  onPress={() => selectRoute(r.id)}
+                  disabled={pendingStopId !== null}
+                />
+              ))}
+            </View>
+          ) : null}
+
+          {route ? (
+            <View style={styles.block}>
+              <RouteSummaryCard route={route} driver={user} />
+            </View>
+          ) : null}
 
           {loadError ? (
             <View style={styles.notice}>
@@ -57,7 +88,15 @@ export function MyRouteScreen() {
             </View>
           ) : null}
 
-          {stops.length === 0 ? (
+          {!route ? (
+            <View style={styles.block}>
+              <EmptyState
+                icon="local-shipping"
+                title="Aucune tournée affectée"
+                message="Aucune tournée ne vous est attribuée pour le moment. Actualisez plus tard."
+              />
+            </View>
+          ) : stops.length === 0 ? (
             <View style={styles.block}>
               <EmptyState
                 icon="local-shipping"
@@ -86,6 +125,7 @@ export function MyRouteScreen() {
                           variant="accent"
                           size="sm"
                           onPress={() => markDelivered(stop.id)}
+                          loading={pendingStopId === stop.id}
                           disabled={pendingStopId !== null || isRefreshing}
                         />
                       ) : undefined
@@ -115,6 +155,10 @@ export function MyRouteScreen() {
 }
 
 const styles = StyleSheet.create({
+  selector: {
+    gap: spacing.xs,
+    marginBottom: spacing.lg,
+  },
   block: {
     marginBottom: spacing.lg,
   },

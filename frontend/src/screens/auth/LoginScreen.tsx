@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Icon, Notice, ScreenContainer, TextField } from '../../components/common';
+import { MOCKS } from '../../config/api';
 import { colors, sizes, spacing, typography } from '../../constants/theme';
 import { useAsync } from '../../hooks/useAsync';
 import { useAuth } from '../../hooks/useAuth';
+import { healthService } from '../../services';
 import { isNonEmpty, isValidEmail } from '../../utils/validation';
+
+// Indicateur de connexion à l'API : en développement, et seulement si le login passe par l'API.
+const SHOW_API_STATUS = __DEV__ && !MOCKS.auth;
 
 interface FieldErrors {
   email?: string;
@@ -12,11 +17,17 @@ interface FieldErrors {
 }
 
 export function LoginScreen() {
-  const { login } = useAuth();
+  const { login, sessionMessage } = useAuth();
   const { state, run, isLoading } = useAsync(login);
+  const health = useAsync(healthService.check);
+  const runHealthCheck = health.run;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  useEffect(() => {
+    if (SHOW_API_STATUS) void runHealthCheck();
+  }, [runHealthCheck]);
 
   const handleSubmit = () => {
     if (isLoading) return;
@@ -77,10 +88,21 @@ export function LoginScreen() {
             />
 
             {state.status === 'error' ? <Notice tone="error" message={state.error} /> : null}
+            {state.status !== 'error' && sessionMessage ? <Notice tone="info" message={sessionMessage} /> : null}
 
             <Button label="Se connecter" onPress={handleSubmit} loading={isLoading} style={styles.submit} />
           </View>
         </Card>
+
+        {SHOW_API_STATUS ? (
+          <Text style={styles.apiStatus} accessibilityLiveRegion="polite">
+            {health.state.status === 'success'
+              ? `API joignable : ${healthService.baseUrl}`
+              : health.state.status === 'error'
+                ? `API injoignable (${healthService.baseUrl}) : ${health.state.error}`
+                : `Vérification de l'API : ${healthService.baseUrl}…`}
+          </Text>
+        ) : null}
       </View>
     </ScreenContainer>
   );
@@ -140,5 +162,11 @@ const styles = StyleSheet.create({
   },
   submit: {
     marginTop: spacing.sm,
+  },
+  apiStatus: {
+    ...typography.bodySm,
+    color: colors.secondary,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
 });

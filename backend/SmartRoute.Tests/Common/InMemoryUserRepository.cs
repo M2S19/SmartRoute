@@ -30,4 +30,9 @@ public sealed class InMemoryUserRepository() : UserRepository(UnusedDatabase)
     }
 
     public override Task EnsureIndexesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public override Task<User?> FindByIdAsync(string id, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_usersByEmail.Values.FirstOrDefault(user => user.Id == id));
+    }
 }

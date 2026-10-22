@@ -13,6 +13,12 @@ public static class TestMongo
 {
     public const string DatabaseName = "smartroute_test";
 
+    /// <summary>
+    /// Collection xUnit des tests qui vident et remplissent la collection « routes » :
+    /// exécutés l'un après l'autre (xUnit exécute sinon les classes de test en parallèle).
+    /// </summary>
+    public const string CollectionName = "MongoDB";
+
     public static string ConnectionString =>
         Environment.GetEnvironmentVariable("SMARTROUTE_TEST_MONGO") is { Length: > 0 } value
             ? value

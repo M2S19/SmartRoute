@@ -1,39 +1,49 @@
 import { useCallback, useEffect, useState } from 'react';
 import { routeService } from '../services';
-import { toErrorMessage } from '../types';
-import type { Route, RouteStop } from '../types';
+import { ApiError, toErrorMessage } from '../types';
+import type { Route } from '../types';
+import { todayIsoDate } from '../utils/format';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
-function replaceStop(route: Route, stopId: string, update: (stop: RouteStop) => RouteStop): Route {
-  return { ...route, stops: route.stops.map((s) => (s.id === stopId ? update(s) : s)) };
+/**
+ * Tournée affichée par défaut : celle du jour encore active, sinon la première active,
+ * sinon la plus récente (l'API renvoie les tournées de la plus récente à la plus ancienne).
+ */
+function defaultRouteId(routes: Route[]): string | null {
+  const today = todayIsoDate();
+  const active = routes.filter((r) => r.status !== 'COMPLETED');
+  return (active.find((r) => r.date === today) ?? active[0] ?? routes[0])?.id ?? null;
 }
 
 /**
- * Tournée du livreur connecté : chargement, actualisation et validation d'un arrêt.
- * La validation est optimiste : l'arrêt passe « Livré » immédiatement,
- * puis revient à son état précédent si le service échoue.
+ * Tournées du livreur connecté : chargement, actualisation, choix de la tournée et validation d'un arrêt.
+ * Pas de mise à jour optimiste : un arrêt n'apparaît « Livré » qu'une fois la réponse du serveur reçue,
+ * et la tournée affichée est alors celle renvoyée par le serveur.
  */
 export function useMyRoute() {
-  const [route, setRoute] = useState<Route | null>(null);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingStopId, setPendingStopId] = useState<string | null>(null);
 
-  const fetchRoute = useCallback(async (mode: 'initial' | 'refresh') => {
+  const fetchRoutes = useCallback(async (mode: 'initial' | 'refresh') => {
     if (mode === 'initial') setStatus('loading');
     else setIsRefreshing(true);
     setLoadError(null);
 
     try {
-      const data = await routeService.getMyRoute();
-      setRoute(data);
+      const data = await routeService.getMyRoutes();
+      setRoutes(data);
+      // La tournée choisie reste affichée si elle existe toujours.
+      setSelectedRouteId((current) => (current && data.some((r) => r.id === current) ? current : defaultRouteId(data)));
       setStatus('ready');
     } catch (error) {
       setLoadError(toErrorMessage(error));
-      // En actualisation, on garde la tournée déjà affichée.
+      // En actualisation, on garde les tournées déjà affichées.
       if (mode === 'initial') setStatus('error');
     } finally {
       setIsRefreshing(false);
@@ -41,41 +51,50 @@ export function useMyRoute() {
   }, []);
 
   useEffect(() => {
-    void fetchRoute('initial');
-  }, [fetchRoute]);
+    void fetchRoutes('initial');
+  }, [fetchRoutes]);
+
+  const route = routes.find((r) => r.id === selectedRouteId) ?? null;
 
   const markDelivered = useCallback(
     async (stopId: string) => {
-      // Pas de validation pendant une actualisation : sa réponse écraserait l'état optimiste.
       if (!route || pendingStopId || isRefreshing) return;
 
-      const previous = route;
       setActionError(null);
       setPendingStopId(stopId);
-      setRoute(replaceStop(route, stopId, (s) => ({ ...s, status: 'DELIVERED', deliveredAt: new Date().toISOString() })));
 
       try {
-        const updated = await routeService.markStopDelivered(stopId);
-        setRoute((current) => (current ? replaceStop(current, stopId, () => updated) : current));
+        const updated = await routeService.markStopDelivered(route.id, stopId);
+        setRoutes((current) => current.map((r) => (r.id === updated.id ? updated : r)));
       } catch (error) {
-        setRoute(previous);
         setActionError(`La livraison n'a pas pu être validée : ${toErrorMessage(error)}`);
+        // 404 / 409 : l'état serveur diffère de l'affichage (arrêt déjà livré, tournée modifiée…) : on le recharge.
+        if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+          void fetchRoutes('refresh');
+        }
       } finally {
         setPendingStopId(null);
       }
     },
-    [route, pendingStopId, isRefreshing],
+    [route, pendingStopId, isRefreshing, fetchRoutes],
   );
 
+  const selectRoute = useCallback((routeId: string) => {
+    setActionError(null);
+    setSelectedRouteId(routeId);
+  }, []);
+
   return {
+    routes,
     route,
     status,
     loadError,
     actionError,
     isRefreshing,
     pendingStopId,
-    reload: () => fetchRoute('initial'),
-    refresh: () => fetchRoute('refresh'),
+    selectRoute,
+    reload: () => fetchRoutes('initial'),
+    refresh: () => fetchRoutes('refresh'),
     markDelivered,
   };
 }

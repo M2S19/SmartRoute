@@ -73,9 +73,14 @@ Docs: https://docs.expo.dev/eas/index.md
 - Concurrence optimiste des tournées : chaque tournée a un champ version (int),
   incrémenté à chaque modification ; toute mise à jour MongoDB est filtrée
   sur { _id, version } → 0 document modifié = 409
-- GET /api/routes/me : 404 si aucune tournée (le front affiche l'état vide)
-- PATCH /api/routes/me/stops/{stopId}/deliver : idempotent (modification partielle de l'état d'un arrêt),
-  200 même si l'arrêt est déjà livré ; 404 si l'arrêt n'appartient pas au livreur
+- GET /api/routes/me (rôle LIVREUR) : tournées du livreur identifié par le claim sub, la plus récente d'abord ;
+  liste vide (200) si aucune tournée ; ni version ni identifiant du livreur dans la réponse
+- PATCH /api/routes/me/{routeId}/stops/{stopId}/deliver (rôle LIVREUR) : renvoie la tournée à jour (200) ;
+  404 si la tournée n'existe pas, appartient à un autre livreur (même réponse) ou ne contient pas l'arrêt ;
+  409 ROUTE_NOT_MODIFIABLE (tournée hors ASSIGNED / IN_PROGRESS), STOP_ALREADY_DELIVERED,
+  STOP_NOT_NEXT (arrêts livrés dans l'ordre), CONFLICT (modifications concurrentes répétées).
+  Transitions : arrêt PENDING → DELIVERED (deliveredAt UTC) ; tournée ASSIGNED → IN_PROGRESS au premier arrêt,
+  → COMPLETED au dernier. Écriture filtrée sur { _id, version }, relue et réappliquée jusqu'à 3 fois
 - Géocodage : fait par l'API via IGeocodingService (API Adresse / BAN),
   résultats en cache dans MongoDB, adresse introuvable → 422
 - Distances : matrice construite par Services/DistanceService (classe concrète), Haversine d'abord,

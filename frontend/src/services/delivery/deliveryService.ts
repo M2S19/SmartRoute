@@ -1,4 +1,4 @@
-import { USE_MOCKS } from '../../config/api';
+import { MOCKS } from '../../config/api';
 import type { AssignDeliveryRequest, AssignmentConfirmation, AssignmentProposal } from '../../types';
 import { deliveryServiceHttp } from './deliveryService.http';
 import { deliveryServiceMock } from './deliveryService.mock';
@@ -10,4 +10,4 @@ export interface DeliveryService {
   confirmAssignment(proposal: AssignmentProposal): Promise<AssignmentConfirmation>;
 }
 
-export const deliveryService: DeliveryService = USE_MOCKS ? deliveryServiceMock : deliveryServiceHttp;
+export const deliveryService: DeliveryService = MOCKS.deliveries ? deliveryServiceMock : deliveryServiceHttp;

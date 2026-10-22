@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   AppFooter,
@@ -26,6 +26,14 @@ export function ManagerDashboardScreen({ navigation }: ManagerScreenProps<'Manag
 
   const proposal = search.state.status === 'success' ? search.state.data : null;
   const isBusy = search.isLoading || confirm.isLoading;
+  const resetSearch = search.reset;
+
+  // Tournée modifiée ou plus éligible depuis la proposition : celle-ci n'est plus confirmable,
+  // on la retire ; le message d'erreur reste affiché et invite à relancer la recherche.
+  const confirmErrorCode = confirm.state.status === 'error' ? confirm.state.code : null;
+  useEffect(() => {
+    if (confirmErrorCode === 'PROPOSAL_OUTDATED' || confirmErrorCode === 'ROUTE_NOT_ELIGIBLE') resetSearch();
+  }, [confirmErrorCode, resetSearch]);
 
   const handleAddressChange = (text: string) => {
     setAddress(text);
@@ -41,7 +49,8 @@ export function ManagerDashboardScreen({ navigation }: ManagerScreenProps<'Manag
   };
 
   const handleConfirm = async () => {
-    if (!proposal) return;
+    // Une seule confirmation à la fois (le bouton est aussi désactivé pendant la requête).
+    if (!proposal || confirm.isLoading) return;
     const confirmation = await confirm.run(proposal);
     if (confirmation) {
       setAddress('');
@@ -92,13 +101,18 @@ export function ManagerDashboardScreen({ navigation }: ManagerScreenProps<'Manag
           {proposal ? (
             <>
               <AssignmentProposalPanel proposal={proposal} />
-              {confirm.state.status === 'error' ? <Notice tone="error" message={confirm.state.error} /> : null}
               <Button label="Confirmer l'affectation" onPress={handleConfirm} loading={confirm.isLoading} />
             </>
           ) : null}
 
+          {confirm.state.status === 'error' ? <Notice tone="error" message={confirm.state.error} /> : null}
+
+          {/* Affiché seulement après la réponse de succès de l'API (201). */}
           {confirm.state.status === 'success' ? (
-            <Notice tone="success" message={`Affectation confirmée : livraison confiée à ${confirm.state.data.driverName}.`} />
+            <Notice
+              tone="success"
+              message={`Affectation enregistrée : livraison ajoutée à « ${confirm.state.data.routeName} » (arrêt n° ${confirm.state.data.insertionPosition}), livreur ${confirm.state.data.driver.fullName}.`}
+            />
           ) : null}
         </SectionCard>
       </View>

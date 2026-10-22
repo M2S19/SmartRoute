@@ -24,11 +24,13 @@ interface StopCardProps {
 
 function describeStop(stop: RouteStop, variant: StopCardVariant): string {
   const { parcelRef, parcelType, instructions } = stop.delivery;
+  // La référence colis n'existe pas toujours (l'API ne la gère pas encore) : rien n'est affiché à sa place.
   if (variant === 'delivered') {
-    return stop.deliveredAt ? `Colis #${parcelRef} • Validé à ${formatTime(stop.deliveredAt)}` : `Colis #${parcelRef}`;
+    const parts = [parcelRef ? `Colis #${parcelRef}` : null, stop.deliveredAt ? `Validé à ${formatTime(stop.deliveredAt)}` : null];
+    return parts.filter(Boolean).join(' • ');
   }
-  const base = `Colis ${PARCEL_TYPE_LABELS[parcelType]} #${parcelRef}`;
-  return instructions ? `${base} • ${instructions}` : base;
+  const base = parcelRef ? `Colis ${PARCEL_TYPE_LABELS[parcelType]} #${parcelRef}` : null;
+  return [base, instructions].filter(Boolean).join(' • ');
 }
 
 export function StopCard({ stop, variant, footer }: StopCardProps) {
@@ -50,7 +52,9 @@ export function StopCard({ stop, variant, footer }: StopCardProps) {
             <Text style={[styles.address, isNext && styles.addressNext, isDelivered && styles.addressDelivered]}>
               {stop.delivery.address.label}
             </Text>
-            {variant !== 'plain' ? <Text style={styles.meta}>{describeStop(stop, variant)}</Text> : null}
+            {variant !== 'plain' && describeStop(stop, variant) ? (
+              <Text style={styles.meta}>{describeStop(stop, variant)}</Text>
+            ) : null}
           </View>
         </View>
         {variant === 'delivered' ? <Badge label="Livré" tone="muted" uppercase={false} /> : null}
