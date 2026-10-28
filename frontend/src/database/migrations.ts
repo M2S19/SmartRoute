@@ -100,5 +100,12 @@ export async function migrateDatabase(
     db, 'route_stops', 'delivery_json', 'delivery_json TEXT'
   );
 
+  await addColumnIfMissing(
+    db,
+    'routes',
+    'is_available',
+    'is_available INTEGER NOT NULL DEFAULT 1'
+  );
+
   console.log('Migration SQLite terminée avec succès');
 }

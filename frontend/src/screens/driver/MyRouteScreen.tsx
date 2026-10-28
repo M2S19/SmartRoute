@@ -31,10 +31,14 @@ export function MyRouteScreen() {
     actionError,
     isRefreshing,
     pendingStopId,
+    pendingSyncCount,
     selectRoute,
     reload,
     refresh,
     markDelivered,
+    isSyncing,
+    syncMessage,
+    synchronize,
   } = useMyRoute();
 
   const stops = route ? [...route.stops].sort((a, b) => a.order - b.order) : [];
@@ -134,8 +138,44 @@ export function MyRouteScreen() {
                 );
               })}
               {isCompleted ? <Notice tone="success" message="Tournée terminée : tous les arrêts sont livrés." /> : null}
+
+              
             </View>
+            
           )}
+                    {pendingSyncCount > 0 ? (
+            <View style={styles.notice}>
+              <Notice
+                tone="info"
+                message={`${pendingSyncCount} livraison(s) en attente de synchronisation.`}
+              />
+            </View>
+          ) : null}
+
+
+          {syncMessage ? (
+            <View style={styles.notice}>
+              <Notice
+                tone="info"
+                message={syncMessage}
+              />
+            </View>
+          ) : null}
+
+          <Button
+            label="Synchroniser les livraisons"
+            icon="sync"
+            variant="accent"
+            size="sm"
+            onPress={synchronize}
+            loading={isSyncing}
+            disabled={
+              isSyncing ||
+              isRefreshing ||
+              pendingStopId !== null ||
+              pendingSyncCount === 0
+            }
+          />
 
           <Button
             label="Actualiser la tournée"
@@ -144,8 +184,7 @@ export function MyRouteScreen() {
             size="sm"
             onPress={refresh}
             loading={isRefreshing}
-            disabled={pendingStopId !== null}
-          />
+            disabled={pendingStopId !== null || isSyncing}          />
         </>
       ) : null}
 

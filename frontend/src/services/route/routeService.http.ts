@@ -25,3 +25,29 @@ export const routeServiceHttp: RouteService = {
     return fromDriverRouteApi(route);
   },
 };
+
+
+/**
+ * Transmet au backend une livraison enregistrée localement.
+ *
+ * operationId est l'UUID généré dans SQLite.
+ * Il doit rester identique lors des nouvelles tentatives.
+ */
+export async function sendDeliveryForSync(
+  routeId: string,
+  stopId: string,
+  operationId: string
+) {
+  const response = await httpClient.patch<DriverRouteApi>(
+    endpoints.deliverStop(routeId, stopId),
+    undefined,
+    {
+      headers: {
+        'Idempotency-Key': operationId,
+      },
+    }
+  );
+
+  return fromDriverRouteApi(response);
+}
+

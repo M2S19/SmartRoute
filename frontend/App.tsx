@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from 'react';
-import { DatabaseTestRunner } from './src/database/DatabaseTestRunner';
+
 import {
   IBMPlexSans_400Regular,
   IBMPlexSans_400Regular_Italic,
@@ -25,28 +26,22 @@ import { initDatabase } from './src/database/database';
 
 export default function App() {
 
+  // 1. État de l'initialisation SQLite
   const [databaseReady, setDatabaseReady] = useState(false);
 
-  useEffect(() => {
-    initDatabase()
-      .then(() => setDatabaseReady(true))
-      .catch((error) => {
-        console.error('Erreur initialisation SQLite :', error);
-      });
-  }, []);
-  // Initialisation SQLite au démarrage
+  // 2. Initialiser SQLite une seule fois au démarrage
   useEffect(() => {
     initDatabase()
       .then(() => {
-        console.log('SQLite SmartRoute initialisée');
+        console.log('Base SQLite prête');
+        setDatabaseReady(true);
       })
       .catch((error) => {
         console.error('Erreur initialisation SQLite :', error);
       });
   }, []);
 
-  
-  // Chargement des polices
+  // 3. Chargement des polices
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_500Medium,
     SpaceGrotesk_600SemiBold,
@@ -57,14 +52,15 @@ export default function App() {
     IBMPlexSans_600SemiBold,
   });
 
+  // 4. Attendre SQLite et les polices
   if (!fontsLoaded || !databaseReady) {
     return <FullScreenLoader />;
   }
 
+  // 5. Afficher l'application
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <DatabaseTestRunner />
         <StatusBar style="dark" />
         <RootNavigator />
       </AuthProvider>
