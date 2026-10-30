@@ -59,16 +59,28 @@ public class RoutesController : ControllerBase
     /// Tournée terminée (ROUTE_NOT_MODIFIABLE), arrêt déjà livré (STOP_ALREADY_DELIVERED),
     /// arrêt qui n'est pas le suivant (STOP_NOT_NEXT), modifications concurrentes (CONFLICT).
     /// </response>
+
     [HttpPatch("me/{routeId}/stops/{stopId}/deliver")]
     [Authorize(Policy = Policies.RequireDriver)]
-    [ProducesResponseType<DriverRouteResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<DriverRouteResponse>(
+        StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverRouteResponse>> DeliverStop(
         string routeId,
         string stopId,
+        [FromHeader(Name = "Idempotency-Key")] string? operationId,
         CancellationToken cancellationToken)
     {
-        return Ok(await _routeService.DeliverStopAsync(CurrentUserId(), routeId, stopId, cancellationToken));
+        return Ok(
+            await _routeService.DeliverStopAsync(
+                CurrentUserId(),
+                routeId,
+                stopId,
+                cancellationToken,
+                operationId
+            )
+        );
     }
+
 
     // Identifiant de l'utilisateur, uniquement depuis le JWT validé (claim « sub »).
     private string CurrentUserId() =>

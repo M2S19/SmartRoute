@@ -1,3 +1,4 @@
+
 using SmartRoute.Api.DTOs.Routes;
 using SmartRoute.Api.Errors;
 using SmartRoute.Api.Models;
@@ -7,91 +8,167 @@ using RouteModel = SmartRoute.Api.Models.Route;
 namespace SmartRoute.Api.Services;
 
 /// <summary>
-/// Tournées du livreur connecté (US3) : consultation et validation d'un arrêt.
-/// L'identifiant du livreur vient toujours du JWT (claim « sub »), jamais du client.
+/// US3 : consultation des tournées et validation des livraisons.
+/// Le livreur est identifié exclusivement depuis le JWT.
 /// </summary>
 public class RouteService
 {
-    /// <summary>Lectures / écritures tentées si la tournée change entre la lecture et l'écriture.</summary>
     private const int MaxDeliverAttempts = 3;
 
     private readonly RouteRepository _routeRepository;
     private readonly TimeProvider _timeProvider;
 
-    public RouteService(RouteRepository routeRepository, TimeProvider timeProvider)
+    public RouteService(
+        RouteRepository routeRepository,
+        TimeProvider timeProvider)
     {
         _routeRepository = routeRepository;
         _timeProvider = timeProvider;
     }
 
-    /// <summary>Tournées affectées au livreur (liste vide s'il n'en a aucune).</summary>
+    /// <summary>
+    /// Récupère les tournées affectées au livreur.
+    /// </summary>
     public async Task<List<DriverRouteResponse>> GetDriverRoutesAsync(
         string driverId,
         CancellationToken cancellationToken = default)
     {
-        List<RouteModel> routes = await _routeRepository.FindByDriverAsync(driverId, cancellationToken);
+        List<RouteModel> routes =
+            await _routeRepository.FindByDriverAsync(
+                driverId,
+                cancellationToken);
 
         return routes.Select(DriverRouteResponse.From).ToList();
     }
 
     /// <summary>
-    /// Marque un arrêt comme livré et renvoie la tournée à jour.
-    /// Règles : tournée du livreur, encore modifiable (ASSIGNED ou IN_PROGRESS), arrêt en attente,
-    /// et arrêt suivant dans l'ordre de passage (les arrêts livrés forment toujours le début de la tournée,
-    /// ce que suppose aussi l'insertion de l'US2).
-    /// Transitions : arrêt PENDING → DELIVERED ; tournée ASSIGNED → IN_PROGRESS au premier arrêt livré,
-    /// → COMPLETED quand tous les arrêts sont livrés.
+    /// Valide un arrêt en respectant :
+    /// - L'appartenance au livreur
+    /// - Le statut de la tournée
+    /// - L'ordre des livraisons
+    /// - L'idempotence via operationId
+    /// - Le verrouillage optimiste MongoDB
     /// </summary>
-    /// <exception cref="ApiException">
-    /// 404 NOT_FOUND (tournée inconnue ou d'un autre livreur, arrêt absent de la tournée),
-    /// 409 ROUTE_NOT_MODIFIABLE, STOP_ALREADY_DELIVERED, STOP_NOT_NEXT,
-    /// 409 CONFLICT (tournée modifiée en continu pendant la validation).
-    /// </exception>
     public async Task<DriverRouteResponse> DeliverStopAsync(
         string driverId,
         string routeId,
         string stopId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? operationId = null)
     {
+        // 1. Vérifier le format de l'identifiant d'opération.
+        if (operationId is not null &&
+            !Guid.TryParseExact(operationId, "D", out _))
+        {
+            throw new ApiException(
+                StatusCodes.Status400BadRequest,
+                ErrorCodes.Conflict,
+                "Idempotency-Key doit contenir un UUID valide.");
+        }
+
+        // 2. Réessayer en cas de modification concurrente.
         for (int attempt = 1; attempt <= MaxDeliverAttempts; attempt++)
         {
-            // 1. Relecture à chaque tentative : les règles sont revérifiées sur l'état courant.
-            RouteModel route = await _routeRepository.FindByIdAsync(routeId, cancellationToken) ?? throw RouteNotFound();
+            // Relire l'état courant dans MongoDB.
+            RouteModel route =
+                await _routeRepository.FindByIdAsync(
+                    routeId,
+                    cancellationToken)
+                ?? throw RouteNotFound();
 
-            // Même réponse que pour une tournée inexistante : rien n'est révélé des tournées des autres livreurs.
+            // Vérifier l'appartenance au livreur.
             if (route.AssignedDriverId != driverId)
             {
                 throw RouteNotFound();
             }
 
-            RouteStop stop = route.Stops.FirstOrDefault(s => s.Id == stopId)
-                ?? throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.NotFound, "Arrêt introuvable dans cette tournée.");
+            // 3. Reconnaître une opération déjà exécutée.
+            if (operationId is not null)
+            {
+                RouteStop? previousOperation = route.Stops
+                    .FirstOrDefault(s =>
+                        s.DeliveryOperationId == operationId);
 
+                if (previousOperation is not null)
+                {
+                    // Un UUID ne peut pas valider un autre arrêt
+                    // de cette même tournée.
+                    if (previousOperation.Id != stopId)
+                    {
+                        throw new ApiException(
+                            StatusCodes.Status409Conflict,
+                            ErrorCodes.Conflict,
+                            "Cet identifiant d'opération est déjà utilisé pour un autre arrêt.");
+                    }
+
+                    // Même opération déjà confirmée : retourner 200,
+                    // sans modifier MongoDB ni incrémenter la version.
+                    if (previousOperation.Status == "DELIVERED")
+                    {
+                        return DriverRouteResponse.From(route);
+                    }
+                }
+            }
+
+            // 4. Récupérer l'arrêt demandé.
+            RouteStop stop = route.Stops.FirstOrDefault(
+                s => s.Id == stopId
+            ) ?? throw new ApiException(
+                StatusCodes.Status404NotFound,
+                ErrorCodes.NotFound,
+                "Arrêt introuvable dans cette tournée.");
+
+            // 5. Vérifier les règles métier de l'US3.
             EnsureCanBeDelivered(route, stop);
 
-            // 2. Nouvel état de la tournée.
+            // 6. Préparer le nouvel état de la tournée.
             int expectedVersion = route.Version;
+
             stop.Status = "DELIVERED";
             stop.DeliveredAt = UtcNowToMillisecond();
-            route.Status = route.Stops.All(s => s.Status == "DELIVERED") ? "COMPLETED" : "IN_PROGRESS";
+
+            // Conserver l'UUID dans le même document MongoDB.
+            stop.DeliveryOperationId = operationId;
+
+            route.Status = route.Stops.All(
+                s => s.Status == "DELIVERED"
+            )
+                ? "COMPLETED"
+                : "IN_PROGRESS";
+
             route.Version = expectedVersion + 1;
 
-            // 3. Écriture conditionnelle { _id, version } : si une autre écriture (ex. confirmation US2)
-            //    est passée entre-temps, rien n'est écrit et on recommence sur la nouvelle version.
-            if (await _routeRepository.ReplaceIfVersionMatchesAsync(route, expectedVersion, cancellationToken))
+            // 7. Écriture atomique sous condition de version.
+            bool updated =
+                await _routeRepository.ReplaceIfVersionMatchesAsync(
+                    route,
+                    expectedVersion,
+                    cancellationToken);
+
+            if (updated)
             {
                 return DriverRouteResponse.From(route);
             }
+
+            // Si la version a changé entre la lecture et l'écriture,
+            // la boucle recommence sur la version la plus récente.
         }
 
+        // 8. Échec après plusieurs tentatives concurrentes.
         throw new ApiException(
             StatusCodes.Status409Conflict,
             ErrorCodes.Conflict,
             "La tournée a été modifiée pendant la validation. Actualisez puis réessayez.");
     }
 
-    private static void EnsureCanBeDelivered(RouteModel route, RouteStop stop)
+    /// <summary>
+    /// Vérifie les règles métier de validation des arrêts.
+    /// </summary>
+    private static void EnsureCanBeDelivered(
+        RouteModel route,
+        RouteStop stop)
     {
+        // La tournée doit être modifiable.
         if (!RouteModel.StatusesAcceptingDeliveries.Contains(route.Status))
         {
             throw new ApiException(
@@ -100,6 +177,7 @@ public class RouteService
                 "Cette tournée n'est plus modifiable.");
         }
 
+        // L'arrêt ne doit pas déjà être livré.
         if (stop.Status == "DELIVERED")
         {
             throw new ApiException(
@@ -108,6 +186,7 @@ public class RouteService
                 "Cet arrêt est déjà livré.");
         }
 
+        // Le livreur doit respecter l'ordre de passage.
         RouteStop? nextStop = route.Stops
             .OrderBy(s => s.Order)
             .FirstOrDefault(s => s.Status != "DELIVERED");
@@ -121,13 +200,21 @@ public class RouteService
         }
     }
 
-    // MongoDB conserve les dates à la milliseconde : la réponse renvoie exactement la valeur enregistrée.
+    /// <summary>
+    /// Date UTC arrondie à la milliseconde
+    /// pour correspondre à la précision MongoDB.
+    /// </summary>
     private DateTime UtcNowToMillisecond()
     {
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
-        return now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMillisecond));
+
+        return now.AddTicks(
+            -(now.Ticks % TimeSpan.TicksPerMillisecond));
     }
 
     private static ApiException RouteNotFound() =>
-        new(StatusCodes.Status404NotFound, ErrorCodes.NotFound, "Tournée introuvable.");
+        new(
+            StatusCodes.Status404NotFound,
+            ErrorCodes.NotFound,
+            "Tournée introuvable.");
 }

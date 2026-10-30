@@ -1,3 +1,4 @@
+
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace SmartRoute.Api.Models;
@@ -19,4 +20,9 @@ public class RouteStop
     [BsonElement("deliveredAt")]
     [BsonIgnoreIfNull]
     public DateTime? DeliveredAt { get; set; }
+
+    // UUID de l'opération qui a validé cet arrêt.
+    [BsonElement("deliveryOperationId")]
+    [BsonIgnoreIfNull]
+    public string? DeliveryOperationId { get; set; }
 }
