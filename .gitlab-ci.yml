@@ -2,8 +2,8 @@
 # Chaque job ne tourne que si son dossier (ou ce fichier) a changé.
 
 stages:
+  - build
   - test
-  -build
 
 # Pipelines de branche et de merge request, sans doublon quand une MR est ouverte.
 workflow:
@@ -13,7 +13,7 @@ workflow:
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
       when: never
     - if: '$CI_COMMIT_BRANCH'
-    
+
 backend:build:
   stage: build
   image: mcr.microsoft.com/dotnet/sdk:10.0
