@@ -4,6 +4,7 @@
 stages:
   - build
   - test
+  - package
 
 # Pipelines de branche et de merge request, sans doublon quand une MR est ouverte.
 workflow:
@@ -35,13 +36,27 @@ backend:build:
         - backend/**/*
         - .gitlab-ci.yml
 
-docker:check:
-  stage: build
+docker:package:
+  stage: package
   image: docker:27-cli
 
+  variables:
+    IMAGE_NAME: "smartroute-api"
+    IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+
   script:
-    - docker version
-    - docker info
+    - docker build --target final -t "$IMAGE_NAME:$IMAGE_TAG" ./backend/SmartRoute.Api
+    - docker save "$IMAGE_NAME:$IMAGE_TAG" -o image.tar
+
+  artifacts:
+    paths:
+      - image.tar
+    expire_in: 1 day
+
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
 
 backend:test:
   stage: test
