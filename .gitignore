@@ -13,3 +13,6 @@ Thumbs.db
 
 # Cache NuGet de la CI
 .nuget/
+
+# Artefacts de compilation .NET
+backend/publish/

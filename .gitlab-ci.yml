@@ -3,6 +3,7 @@
 
 stages:
   - test
+  -build
 
 # Pipelines de branche et de merge request, sans doublon quand une MR est ouverte.
 workflow:
@@ -12,6 +13,27 @@ workflow:
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
       when: never
     - if: '$CI_COMMIT_BRANCH'
+    
+backend:build:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+
+  variables:
+    DOTNET_NOLOGO: "1"
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+  script:
+    - dotnet publish backend/SmartRoute.Api/SmartRoute.Api.csproj -c Release -o backend/publish
+
+  artifacts:
+    paths:
+      - backend/publish/
+    expire_in: 1 week
+
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
 
 backend:test:
   stage: test
