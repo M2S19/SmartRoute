@@ -35,6 +35,14 @@ backend:build:
         - backend/**/*
         - .gitlab-ci.yml
 
+docker:check:
+  stage: build
+  image: docker:27-cli
+
+  script:
+    - docker version
+    - docker info
+
 backend:test:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:10.0
