@@ -219,7 +219,12 @@ deploy:production:
         -o BatchMode=yes \
         -o StrictHostKeyChecking=yes \
         "$DEPLOY_USER@$DEPLOY_HOST" \
-        "curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --max-time 10 http://127.0.0.1:8082/api/health"
+        "curl -fsS \
+        --retry 12 \
+        --retry-delay 5 \
+        --retry-all-errors \
+        --max-time 10 \
+        http://127.0.0.1:8082/api/health"
 
   environment:
     name: production
