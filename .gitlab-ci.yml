@@ -1,12 +1,18 @@
-# CI SmartRoute (monorepo) : tests du backend et vérifications du front.
-# Chaque job ne tourne que si son dossier (ou ce fichier) a changé.
+
+# SmartRoute — Pipeline GitLab CI/CD
+# BUILD -> TEST -> PACKAGE -> DEPLOY
+#
+# Branches de développement : exécution selon les fichiers modifiés.
+# Branche main : exécution de tous les jobs obligatoires.
+# Déploiement automatique uniquement sur un push vers main.
 
 stages:
   - build
   - test
   - package
+  - deploy
 
-# Pipelines de branche et de merge request, sans doublon quand une MR est ouverte.
+# Éviter les pipelines en double lorsqu'une MR est ouverte.
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -14,6 +20,11 @@ workflow:
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
       when: never
     - if: '$CI_COMMIT_BRANCH'
+
+
+# ==========================================
+# STAGE BUILD — Compilation du backend
+# ==========================================
 
 backend:build:
   stage: build
@@ -32,9 +43,89 @@ backend:build:
     expire_in: 1 week
 
   rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
     - changes:
         - backend/**/*
         - .gitlab-ci.yml
+
+
+# ==========================================
+# STAGE TEST — Tests backend avec MongoDB
+# ==========================================
+
+backend:test:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+
+  services:
+    - name: mongo:8
+      alias: mongo
+
+  variables:
+    DOTNET_NOLOGO: "1"
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    NUGET_PACKAGES: $CI_PROJECT_DIR/.nuget/packages
+
+    # MongoDB dédié aux tests d'intégration.
+    SMARTROUTE_TEST_MONGO: mongodb://mongo:27017
+    SMARTROUTE_REQUIRE_MONGO: "true"
+
+  cache:
+    key:
+      files:
+        - backend/SmartRoute.Api/SmartRoute.Api.csproj
+        - backend/SmartRoute.Tests/SmartRoute.Tests.csproj
+    paths:
+      - .nuget/packages
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+
+  script:
+    - cd backend
+    - dotnet test --report-xunit-junit --report-xunit-junit-filename junit.xml --results-directory TestResults
+
+  artifacts:
+    when: always
+    reports:
+      junit: backend/TestResults/junit.xml
+    expire_in: 1 week
+
+
+# ==========================================
+# STAGE TEST — Vérifications frontend Expo
+# ==========================================
+
+frontend:check:
+  stage: test
+  image: node:22
+
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/.npm
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+
+  script:
+    - cd frontend
+    - npm ci --cache .npm --prefer-offline
+    - npx tsc --noEmit
+    - npx expo-doctor
+
+
+# ==========================================
+# STAGE PACKAGE — Image Docker de production
+# ==========================================
 
 docker:package:
   stage: package
@@ -45,7 +136,10 @@ docker:package:
     IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
 
   script:
+    # Construire l'image finale du Dockerfile multi-stage.
     - docker build --target final -t "$IMAGE_NAME:$IMAGE_TAG" ./backend/SmartRoute.Api
+
+    # Exporter l'image pour le serveur Ubuntu.
     - docker save "$IMAGE_NAME:$IMAGE_TAG" -o image.tar
 
   artifacts:
@@ -54,62 +148,82 @@ docker:package:
     expire_in: 1 day
 
   rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
     - changes:
         - backend/**/*
+        - docker-compose.deploy.yml
         - .gitlab-ci.yml
 
-backend:test:
-  stage: test
-  image: mcr.microsoft.com/dotnet/sdk:10.0
-  # MongoDB réel pour les tests d'intégration (Integration/), joignable sous le nom d'hôte « mongo ».
-  services:
-    - name: mongo:8
-      alias: mongo
-  variables:
-    DOTNET_NOLOGO: "1"
-    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
-    NUGET_PACKAGES: $CI_PROJECT_DIR/.nuget/packages
-    # Les tests d'intégration utilisent la base smartroute_test sur ce MongoDB ;
-    # MongoDB obligatoire en CI : un test d'intégration échoue (au lieu d'être ignoré) s'il est injoignable.
-    SMARTROUTE_TEST_MONGO: mongodb://mongo:27017
-    SMARTROUTE_REQUIRE_MONGO: "true"
-  cache:
-    key:
-      files:
-        - backend/SmartRoute.Api/SmartRoute.Api.csproj
-        - backend/SmartRoute.Tests/SmartRoute.Tests.csproj
-    paths:
-      - .nuget/packages
-  rules:
-    - changes:
-        - backend/**/*
-        - .gitlab-ci.yml
-  script:
-    - cd backend
-    # Pas de user-secrets : clé JWT de test ; tests d'API sur repository en mémoire, Integration/ sur MongoDB.
-    # Code de sortie non nul si un test échoue → le job échoue.
-    - dotnet test --report-xunit-junit --report-xunit-junit-filename junit.xml --results-directory TestResults
-  artifacts:
-    when: always
-    reports:
-      junit: backend/TestResults/junit.xml
-    expire_in: 1 week
 
-frontend:check:
-  stage: test
-  image: node:22
-  cache:
-    key:
-      files:
-        - frontend/package-lock.json
-    paths:
-      - frontend/.npm
-  rules:
-    - changes:
-        - frontend/**/*
-        - .gitlab-ci.yml
+# ==========================================
+# STAGE DEPLOY — Déploiement sur Ubuntu
+# ==========================================
+
+deploy:production:
+  stage: deploy
+  image: alpine:3.20
+
+  # Télécharger l'artefact créé par docker:package.
+  needs:
+    - job: docker:package
+      artifacts: true
+
+  # Éviter deux déploiements simultanés.
+  resource_group: production
+
+  before_script:
+    # Installer le client SSH.
+    - apk add --no-cache openssh-client
+
+    # Vérifier que les variables nécessaires existent.
+    - test -n "$DEPLOY_HOST"
+    - test -n "$DEPLOY_USER"
+    - test -n "$DEPLOY_PATH"
+    - test -s "$SSH_PRIVATE_KEY"
+    - test -s "$SSH_KNOWN_HOSTS"
+
+    # Préparer les clés SSH sans les afficher.
+    - install -m 700 -d ~/.ssh
+    - cp "$SSH_PRIVATE_KEY" ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - cp "$SSH_KNOWN_HOSTS" ~/.ssh/known_hosts
+    - chmod 600 ~/.ssh/known_hosts
+
   script:
-    - cd frontend
-    - npm ci --cache .npm --prefer-offline
-    - npx tsc --noEmit
-    - npx expo-doctor
+    # Vérifier la présence des éléments à transférer.
+    - test -s image.tar
+    - test -f docker-compose.deploy.yml
+
+    # Transférer l'image et Docker Compose sur Ubuntu.
+    - |
+      scp -i ~/.ssh/id_ed25519 \
+        -o BatchMode=yes \
+        -o StrictHostKeyChecking=yes \
+        image.tar docker-compose.deploy.yml \
+        "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+
+    # Charger l'image Docker et démarrer les services.
+    - |
+      ssh -i ~/.ssh/id_ed25519 \
+        -o BatchMode=yes \
+        -o StrictHostKeyChecking=yes \
+        "$DEPLOY_USER@$DEPLOY_HOST" \
+        "cd '$DEPLOY_PATH' && \
+         docker load -i image.tar && \
+         APP_VERSION='$CI_COMMIT_SHORT_SHA' docker compose -f docker-compose.deploy.yml config --quiet && \
+         APP_VERSION='$CI_COMMIT_SHORT_SHA' docker compose -f docker-compose.deploy.yml up -d --no-build"
+
+    # Vérifier la disponibilité de l'API.
+    - |
+      ssh -i ~/.ssh/id_ed25519 \
+        -o BatchMode=yes \
+        -o StrictHostKeyChecking=yes \
+        "$DEPLOY_USER@$DEPLOY_HOST" \
+        "curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --max-time 10 http://127.0.0.1:8082/api/health"
+
+  environment:
+    name: production
+
+  # Déploiement automatique uniquement après un push sur main.
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
