@@ -2,7 +2,7 @@ name: smartroute-prod
 
 services:
   mongo:
-    image: mongo:8
+    image: mongo:9.0.4
     restart: unless-stopped
 
     volumes:
